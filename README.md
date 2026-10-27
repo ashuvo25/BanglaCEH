@@ -2,7 +2,8 @@
 
 **A Benchmark Dataset and Distilled Reasoning for Culturally Entangled Bangla Homographs in Low-Resource LLMs**
 
-[![Paper](https://img.shields.io/badge/Paper-arXiv-red)]()
+[![Paper](https://img.shields.io/badge/Paper-ACL%20Anthology-red)](https://aclanthology.org/2026.winlp-main.13/)
+[![Website](https://img.shields.io/badge/Website-Project%20Page-orange)](https://ashuvo25.github.io/BanglaCEH/)
 [![License](https://img.shields.io/badge/License-MIT-blue)]()
 [![Language](https://img.shields.io/badge/Language-Bangla-green)]()
 
@@ -181,13 +182,15 @@ Training runs on a **single NVIDIA T4 (16 GB)** — full hyperparameters in the 
 ## 📄 Citation
 
 ```bibtex
-@article{shuvo2026name,
-  title   = {When a Name Is Not a Name: A Benchmark Dataset and Distilled
-             Reasoning for Culturally Entangled Bangla Homographs in
-             Low-Resource LLMs},
-  author  = {Shuvo, Md. Asaduzzaman},
-  year    = {2026},
-  note    = {Under review}
+@inproceedings{shuvo-2026-name,
+  title     = {When a Name Is Not a Name: A Benchmark Dataset and Distilled
+               Reasoning for Culturally Entangled {B}angla Homographs in
+               Low-Resource {LLM}s},
+  author    = {Shuvo, Md. Asaduzzaman},
+  booktitle = {Proceedings of the Widening NLP Workshop (WiNLP 2026)},
+  year      = {2026},
+  publisher = {Association for Computational Linguistics},
+  url       = {https://aclanthology.org/2026.winlp-main.13/}
 }
 ```
 

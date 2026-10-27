@@ -30,6 +30,7 @@
     })();
     document.addEventListener("mouseover", (e) => {
       cursor.classList.toggle("is-big", !!e.target.closest("a, button, select, .tile, .find, img"));
+      cursor.classList.toggle("is-hide", !!e.target.closest("#splitStage"));
     });
   }
 
@@ -42,8 +43,9 @@
     { w: "ঈমান", r: "Iman", name: "Iman, a man", sense: "faith, moral integrity" },
   ];
   const split = $("#split");
-  const word = $(".split__word", split);
-  let wi = 0;
+  const stage = $("#splitStage");
+  const tagName = $(".tagline--name"), tagSense = $(".tagline--sense");
+  let wi = 0, touched = 0, dragging = false;
 
   function setWord(i) {
     const d = WORDS[i];
@@ -54,28 +56,34 @@
       $("#tagSense").textContent = d.sense;
       $("#splitSr").textContent = `${d.w}, ${d.r}: ${d.name}, and ${d.sense}`;
       split.classList.remove("is-swapping");
-    }, reduced ? 0 : 450);
+    }, reduced ? 0 : 420);
   }
-  if (!reduced) setInterval(() => { if (!document.hidden) { wi = (wi + 1) % WORDS.length; setWord(wi); } }, 3800);
+  setInterval(() => {
+    if (document.hidden || reduced || performance.now() - touched < 5000) return;
+    wi = (wi + 1) % WORDS.length; setWord(wi);
+  }, 4200);
 
-  // pointer pulls the two readings apart
-  const hero = $("#hero");
-  let idle = 0;
-  hero.addEventListener("pointermove", (e) => {
-    const r = hero.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width - 0.5;
-    const y = (e.clientY - r.top) / r.height - 0.5;
-    word.style.setProperty("--dx", `${(x * 70).toFixed(1)}px`);
-    word.style.setProperty("--dy", `${(y * 30).toFixed(1)}px`);
-    idle = performance.now();
-  });
+  // the divider: left of it reads as a name (blue), right of it as a meaning (orange)
+  function setSplit(pct) {
+    pct = clamp(pct, 0, 100);
+    stage.style.setProperty("--s", pct.toFixed(1) + "%");
+    tagName.classList.toggle("is-lead", pct >= 50);
+    tagSense.classList.toggle("is-lead", pct < 50);
+  }
+  function fromPointer(e) {
+    const r = stage.getBoundingClientRect();
+    setSplit(((e.clientX - r.left) / r.width) * 100);
+    touched = performance.now();
+  }
+  $("#hero").addEventListener("pointermove", (e) => { if (e.pointerType === "mouse" || dragging) fromPointer(e); });
+  stage.addEventListener("pointerdown", (e) => { dragging = true; stage.setPointerCapture(e.pointerId); fromPointer(e); });
+  stage.addEventListener("pointerup", () => { dragging = false; });
+  stage.addEventListener("pointercancel", () => { dragging = false; });
+  setSplit(50);
   if (!reduced) {
-    (function breathe(t) {
-      if (performance.now() - idle > 1500) {
-        word.style.setProperty("--dx", `${(Math.sin(t / 900) * 14).toFixed(1)}px`);
-        word.style.setProperty("--dy", `${(Math.cos(t / 1300) * 4).toFixed(1)}px`);
-      }
-      requestAnimationFrame(breathe);
+    (function sweep(t) {
+      if (performance.now() - touched > 2500) setSplit(50 + Math.sin(t / 1400) * 30);
+      requestAnimationFrame(sweep);
     })(0);
   }
 

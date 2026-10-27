@@ -182,15 +182,27 @@ Training runs on a **single NVIDIA T4 (16 GB)** — full hyperparameters in the 
 ## 📄 Citation
 
 ```bibtex
-@inproceedings{shuvo-2026-name,
-  title     = {When a Name Is Not a Name: A Benchmark Dataset and Distilled
-               Reasoning for Culturally Entangled {B}angla Homographs in
-               Low-Resource {LLM}s},
-  author    = {Shuvo, Md. Asaduzzaman},
-  booktitle = {Proceedings of the Widening NLP Workshop (WiNLP 2026)},
-  year      = {2026},
-  publisher = {Association for Computational Linguistics},
-  url       = {https://aclanthology.org/2026.winlp-main.13/}
+@inproceedings{shuvo-islam-2026-name,
+    title = "When a Name Is Not a Name: A Benchmark Dataset and Distilled Reasoning for Culturally Entangled {B}angla Homographs in Low-Resource {LLM}s",
+    author = "Shuvo, Md. Asaduzzaman  and
+      Islam, Md. Adnanul",
+    editor = "Zhang, Chen  and
+      Allaway, Emily  and
+      M{'}hamdi, Meryem  and
+      Limkonchotiwat, Peerat  and
+      Bai, Richard He  and
+      T.Y.S.S., Santosh  and
+      Thapa, Surendrabikram  and
+      Li, Yinqiao",
+    booktitle = "Proceedings of the 10th Widening {NLP} Workshop",
+    month = oct,
+    year = "2026",
+    address = "Budapest, Hungary",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2026.winlp-main.13/",
+    pages = "128--140",
+    ISBN = "979-8-89176-472-9",
+    abstract = "Many Bangla words are at once personal names and culturally loaded common nouns: মায়া (Maya) is both a girl{'}s name and a word for affectionate compassion. Choosing the right reading demands cultural knowledge that is scarce in the pretraining data of modern language models. We introduce Bangla Culturally Entangled Homograph (BanglaCEH) disambiguation and build a Bangla benchmark of 1,516 expert-verified sentences and 3,032 labelled occurrences in which one word appears twice with two distinct readings, each labelled with a culturally grounded category and an explanation of the reasoning behind it. Across open- and closed-source models, we find a systematic dominant-meaning bias, models default to the common-noun sense and overlook the name. A Bangla-specific model fails under every prompting regime we test, showing that language-specific pretraining alone does not confer cultural grounding. We further show that contrastive chain-of-thought prompting can sharply reduce this bias without training, and that distilling cultural explanations teaches small (1{--}3B) models to reason toward the correct reading rather than memorise labels, cutting dominant-meaning bias from as high as 100{\%} to under 5{\%} and turning the failed Bangla-specific model into our strongest system."
 }
 ```
 

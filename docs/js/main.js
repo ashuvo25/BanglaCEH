@@ -2,356 +2,369 @@
 (function () {
   "use strict";
 
-  const $ = (sel, root = document) => root.querySelector(sel);
-  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-  const fmt = (n, d = 2) => Number(n).toFixed(d);
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
 
-  /* ---------------- theme ---------------- */
-  const root = document.documentElement;
-  try {
-    const saved = localStorage.getItem("ceh-theme");
-    if (saved) root.dataset.theme = saved;
-  } catch (e) { /* storage unavailable */ }
-
-  $("#themeToggle").addEventListener("click", () => {
-    const dark = root.dataset.theme
-      ? root.dataset.theme === "dark"
-      : matchMedia("(prefers-color-scheme: dark)").matches;
-    root.dataset.theme = dark ? "light" : "dark";
-    try { localStorage.setItem("ceh-theme", root.dataset.theme); } catch (e) { /* ignore */ }
-  });
-
-  /* ---------------- hero specimen ---------------- */
-  const SPECIMENS = [
-    { w: "মায়া", r: "Maya", name: "a common girl's name", sense: "deep, affectionate compassion" },
-    { w: "আশা", r: "Asha", name: "a girl's name", sense: "hope" },
-    { w: "গগন", r: "Gagan", name: "a boy's name", sense: "the sky, the celestial firmament" },
-    { w: "আরিফ", r: "Arif", name: "a boy's name", sense: "one who knows the divine intuitively (Sufi)" },
-  ];
-  let specIdx = 0;
-  const specimen = $("#specimen");
-  function turnSpecimen() {
-    specIdx = (specIdx + 1) % SPECIMENS.length;
-    const s = SPECIMENS[specIdx];
-    specimen.classList.add("is-turning");
-    setTimeout(() => {
-      $("#specimenWord").textContent = s.w;
-      $("#specimenRoman").textContent = s.r;
-      $("#specimenName").textContent = s.name;
-      $("#specimenSense").textContent = s.sense;
-      $("#specimenIdx").textContent = specIdx + 1;
-      specimen.classList.remove("is-turning");
-    }, 220);
-  }
-  specimen.setAttribute("tabindex", "0");
-  specimen.setAttribute("role", "button");
-  specimen.addEventListener("click", turnSpecimen);
-  specimen.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); turnSpecimen(); }
-  });
-
-  /* ---------------- word cards ---------------- */
-  $$(".wcard").forEach((card) => {
-    card.addEventListener("click", () => {
-      card.setAttribute("aria-pressed", card.getAttribute("aria-pressed") === "true" ? "false" : "true");
-    });
-  });
-
-  /* ---------------- margin index: active unit + progress ---------------- */
-  const links = $$(".rail__list a");
-  const units = links.map((a) => $(a.getAttribute("href")));
-  const bar = $("#progressBar");
-  function onScroll() {
-    const y = window.scrollY + window.innerHeight * 0.3;
-    let active = 0;
-    units.forEach((u, i) => { if (u && u.offsetTop <= y) active = i; });
-    links.forEach((a, i) => a.classList.toggle("is-active", i === active));
-    const max = document.documentElement.scrollHeight - window.innerHeight;
-    if (bar) bar.style.width = (max > 0 ? (window.scrollY / max) * 100 : 0) + "%";
-  }
-  window.addEventListener("scroll", onScroll, { passive: true });
-  onScroll();
-
-  // keep the active tab visible in the horizontal mobile index
-  let lastActive = null;
-  window.addEventListener("scroll", () => {
-    const a = $(".rail__list a.is-active");
-    if (a && a !== lastActive && window.innerWidth < 960) {
-      lastActive = a;
-      a.parentElement.parentElement.scrollTo({ left: a.offsetLeft - 16, behavior: "smooth" });
-    }
-  }, { passive: true });
-
-  /* ---------------- run-once when visible ---------------- */
-  function whenVisible(el, fn) {
+  function whenVisible(el, fn, threshold = 0.3) {
     if (!el) return;
     if (!("IntersectionObserver" in window)) { fn(); return; }
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) { io.disconnect(); fn(); }
-    }, { threshold: 0.25 });
+    const io = new IntersectionObserver((es) => {
+      if (es.some((e) => e.isIntersecting)) { io.disconnect(); fn(); }
+    }, { threshold });
     io.observe(el);
   }
 
-  /* ---------------- stat counters ---------------- */
+  /* ---------------- cursor ---------------- */
+  const cursor = $(".cursor");
+  if (matchMedia("(pointer: fine)").matches && !reduced) {
+    let cx = 0, cy = 0, tx = 0, ty = 0;
+    addEventListener("mousemove", (e) => { tx = e.clientX; ty = e.clientY; cursor.classList.add("is-on"); });
+    document.addEventListener("mouseleave", () => cursor.classList.remove("is-on"));
+    (function loop() {
+      cx = lerp(cx, tx, 0.22); cy = lerp(cy, ty, 0.22);
+      cursor.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%)`;
+      requestAnimationFrame(loop);
+    })();
+    document.addEventListener("mouseover", (e) => {
+      cursor.classList.toggle("is-big", !!e.target.closest("a, button, select, .tile, .find, img"));
+    });
+  }
+
+  /* ---------------- hero: one word, two readings ---------------- */
+  const WORDS = [
+    { w: "মায়া", r: "Maya", name: "Maya, a girl", sense: "affectionate compassion" },
+    { w: "আশা", r: "Asha", name: "Asha, a girl", sense: "hope" },
+    { w: "গগন", r: "Gagan", name: "Gagan, a boy", sense: "the sky, the firmament" },
+    { w: "আরিফ", r: "Arif", name: "Arif, a boy", sense: "one who knows the divine" },
+    { w: "ঈমান", r: "Iman", name: "Iman, a man", sense: "faith, moral integrity" },
+  ];
+  const split = $("#split");
+  const word = $(".split__word", split);
+  let wi = 0;
+
+  function setWord(i) {
+    const d = WORDS[i];
+    split.classList.add("is-swapping");
+    setTimeout(() => {
+      $$("[data-word]", split).forEach((l) => { l.textContent = d.w; });
+      $("#tagName").textContent = d.name;
+      $("#tagSense").textContent = d.sense;
+      $("#splitSr").textContent = `${d.w}, ${d.r}: ${d.name}, and ${d.sense}`;
+      split.classList.remove("is-swapping");
+    }, reduced ? 0 : 450);
+  }
+  if (!reduced) setInterval(() => { if (!document.hidden) { wi = (wi + 1) % WORDS.length; setWord(wi); } }, 3800);
+
+  // pointer pulls the two readings apart
+  const hero = $("#hero");
+  let idle = 0;
+  hero.addEventListener("pointermove", (e) => {
+    const r = hero.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    word.style.setProperty("--dx", `${(x * 70).toFixed(1)}px`);
+    word.style.setProperty("--dy", `${(y * 30).toFixed(1)}px`);
+    idle = performance.now();
+  });
+  if (!reduced) {
+    (function breathe(t) {
+      if (performance.now() - idle > 1500) {
+        word.style.setProperty("--dx", `${(Math.sin(t / 900) * 14).toFixed(1)}px`);
+        word.style.setProperty("--dy", `${(Math.cos(t / 1300) * 4).toFixed(1)}px`);
+      }
+      requestAnimationFrame(breathe);
+    })(0);
+  }
+
+  /* ---------------- marquee ---------------- */
+  const MQ = [["মায়া", "Maya"], ["আশা", "Asha"], ["গগন", "Gagan"], ["আরিফ", "Arif"], ["ঈমান", "Iman"],
+    ["দীপ্তি", "Dipti"], ["সুনীল", "Sunil"], ["ভ্রমর", "Bhromor"], ["হৃদয়", "Hridoy"], ["সোহাগী", "Sohagi"]];
+  const row = MQ.map(([b, r]) => `<span class="marquee__item"><span class="bn">${b}</span><span class="mono">${r}</span><i>✦</i></span>`).join("");
+  $("#marquee").innerHTML = row + row;
+
+  /* ---------------- manifesto: words light up on scroll ---------------- */
+  const man = $("#manifesto");
+  const KEYS = ["hope.", "Hope.", "Sky.", "Compassion.", "Faith.", "person,", "girl."];
+  man.innerHTML = man.textContent.trim().split(/\s+/)
+    .map((w) => `<span class="w${KEYS.includes(w) ? " is-key" : ""}">${w}</span>`).join(" ");
+  const manWords = $$(".w", man);
+  function litManifesto() {
+    const r = man.getBoundingClientRect();
+    const p = clamp((innerHeight * 0.85 - r.top) / (r.height + innerHeight * 0.35), 0, 1);
+    const n = Math.round(p * manWords.length);
+    manWords.forEach((w, i) => w.classList.toggle("is-lit", i < n));
+  }
+
+  /* ---------------- lens: human vs LLM reading ---------------- */
+  const lens = $("#lensCard");
+  const VERDICT = {
+    human: "✓ Name + Emotion. The marker নামের (“named”) points to a person.",
+    llm: "✗ Emotion + Emotion. The model sees মায়া and forgets the girl. This is dominant-meaning bias.",
+  };
+  function setLens(mode) {
+    lens.dataset.mode = mode;
+    $$(".switch__btn", lens).forEach((b) => b.classList.toggle("is-on", b.dataset.mode === mode));
+    $(".tk--1 .tk__l", lens).textContent = mode === "human" ? "Name" : "Emotion";
+    $(".tk--2 .tk__l", lens).textContent = "Emotion";
+    $("#lensVerdict").textContent = VERDICT[mode];
+  }
+  $$(".switch__btn", lens).forEach((b) => b.addEventListener("click", () => setLens(b.dataset.mode)));
+  setLens("human");
+  lens.addEventListener("pointermove", (e) => {
+    const r = lens.getBoundingClientRect();
+    lens.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    lens.style.setProperty("--my", `${e.clientY - r.top}px`);
+  });
+
+  /* ---------------- counters ---------------- */
   $$("[data-count]").forEach((el) => {
     const target = parseFloat(el.dataset.count);
     const dec = parseInt(el.dataset.decimals || "0", 10);
+    const show = (v) => { el.textContent = dec ? v.toFixed(dec) : Math.round(v).toLocaleString("en-US"); };
+    if (reduced) { show(target); return; }
     whenVisible(el, () => {
-      const t0 = performance.now(), dur = 1100;
-      const step = (t) => {
+      const t0 = performance.now(), dur = 1600;
+      (function step(t) {
         const p = Math.min(1, (t - t0) / dur);
-        const v = target * (1 - Math.pow(1 - p, 3));
-        el.textContent = dec ? v.toFixed(dec) : Math.round(v).toLocaleString("en-US");
+        show(target * (1 - Math.pow(1 - p, 4)));
         if (p < 1) requestAnimationFrame(step);
-      };
-      requestAnimationFrame(step);
+      })(t0);
     });
   });
 
-  /* ---------------- category bars ---------------- */
+  /* ---------------- donut ---------------- */
   const CATS = [
-    ["Name ↔ Concept", 795, true],
-    ["Concept ↔ Emotion", 193, false],
-    ["Name ↔ Spiritual", 179, true],
-    ["Name ↔ Emotion", 178, true],
-    ["Emotion ↔ State", 171, false],
+    ["Name ↔ Concept", 795, "#6d8dff"],
+    ["Concept ↔ Emotion", 193, "#c27cff"],
+    ["Name ↔ Spiritual", 179, "#ff6b3d"],
+    ["Name ↔ Emotion", 178, "#ffb347"],
+    ["Emotion ↔ State", 171, "#7be0a4"],
   ];
-  const catBars = $("#catBars");
-  const catMax = Math.max(...CATS.map((c) => c[1]));
-  catBars.innerHTML = CATS.map(([l, n, isName]) => `
-    <div class="hbar">
-      <span class="hbar__label">${l}</span>
-      <span class="hbar__track"><span class="hbar__fill${isName ? " hbar__fill--name" : ""}" data-w="${(n / catMax) * 100}"></span></span>
-      <span class="hbar__val">${n}</span>
-    </div>`).join("");
-  catBars.setAttribute("aria-label", CATS.map(([l, n]) => `${l}: ${n}`).join("; "));
-  whenVisible(catBars, () => $$(".hbar__fill", catBars).forEach((f) => { f.style.width = f.dataset.w + "%"; }));
-
-  /* ---------------- results chart ---------------- */
-  const REGIMES = ["Zero-shot", "Few-shot", "C-CoT", "QLoRA-KD"];
-  const MODELS = [
-    { id: "qwen", name: "Qwen2.5-1.5B", em: [0.65, 8.39, 30.97, 85.16],
-      note: "From near-zero to 85.16% EM, and dominant-meaning bias falls from 63.46% to 0.00%." },
-    { id: "llama", name: "Llama-3.2-3B", em: [10.97, 22.58, 15.16, 82.42],
-      note: "C-CoT alone does not help Llama, but distillation lifts it to 82.42% EM with 2.80% bias." },
-    { id: "titu", name: "TituLLM-1B", em: [0.11, 0.31, 1.14, 87.91],
-      note: "The Bangla-specific model fails every prompting regime, then becomes the strongest system after distillation." },
-    { id: "gpt", name: "GPT-4o-mini", em: [43.87, 49.68, null, null],
-      note: "Closed model, prompting only. Its best score (49.68%) is the bar every fine-tuned small model clears." },
-  ];
-
-  const tabs = $("#modelTabs");
-  const chart = $("#emChart");
-  tabs.innerHTML = MODELS.map((m, i) =>
-    `<button type="button" role="tab" class="tab" aria-selected="${i === 0}" data-i="${i}">${m.name}</button>`).join("");
-  chart.innerHTML = REGIMES.map((r, i) => `
-    <div class="col"><div class="col__bar${i === 3 ? " col__bar--kd" : ""}"><span class="col__val"></span></div></div>`).join("");
-  chart.insertAdjacentHTML("afterend",
-    `<div class="chart__x">${REGIMES.map((r) => `<span>${r}</span>`).join("")}</div>`);
-
-  function drawModel(i) {
-    const m = MODELS[i];
-    $$(".tab", tabs).forEach((t, j) => t.setAttribute("aria-selected", String(j === i)));
-    $$(".col__bar", chart).forEach((b, j) => {
-      const v = m.em[j];
-      b.classList.toggle("col__bar--na", v === null);
-      b.style.height = v === null ? "" : v + "%";
-      $(".col__val", b).textContent = v === null ? "n/a" : fmt(v) + "%";
-    });
-    chart.setAttribute("aria-label", `${m.name} exact match: ` +
-      REGIMES.map((r, j) => `${r} ${m.em[j] === null ? "not applicable" : m.em[j] + "%"}`).join(", "));
-    $("#emCaption").textContent = m.note;
-  }
-  tabs.addEventListener("click", (e) => {
-    const t = e.target.closest(".tab");
-    if (t) drawModel(+t.dataset.i);
+  const total = CATS.reduce((s, c) => s + c[1], 0);
+  $("#legend").innerHTML = CATS.map(([l, n, c]) => `<li><i style="background:${c}"></i>${l}<b>${n}</b></li>`).join("");
+  $("#donut").setAttribute("aria-label", "Entanglement types: " + CATS.map(([l, n]) => `${l} ${n}`).join(", "));
+  whenVisible($("#donut"), () => {
+    let acc = 0;
+    const stops = CATS.map(([, n, c]) => { const a = acc; acc += (n / total) * 100; return `${c} ${a.toFixed(2)}% ${(acc - 0.4).toFixed(2)}%, transparent ${(acc - 0.4).toFixed(2)}% ${acc.toFixed(2)}%`; });
+    $("#donut").style.background = `conic-gradient(${stops.join(", ")})`;
   });
-  whenVisible(chart, () => drawModel(0));
 
-  /* ---------------- ablation ---------------- */
-  const ABL = [
-    { name: "Zero-shot", sub: "no training", em: 0.65, bias: 63.46, hall: 52.9 },
-    { name: "KD, label only", sub: "learns which", em: 41.33, bias: 34.56, hall: 36.11 },
-    { name: "QLoRA-KD", sub: "learns why + which", em: 85.16, bias: 0, hall: 1.65 },
+  /* ---------------- meltdown (sticky scroll) ---------------- */
+  const STAGES = [
+    { name: "Zero-shot", em: 0.65, color: "#ff6b3d", note: "Out of the box, it almost never gets both readings right. 63.46% of the time it simply misses the name." },
+    { name: "Few-shot", em: 8.39, color: "#ff8f4d", note: "Worked examples help the format, but not the culture." },
+    { name: "Cultural CoT", em: 30.97, color: "#c27cff", note: "Make it argue for both readings first. Bias falls to 2.88%, with no training at all." },
+    { name: "QLoRA-KD", em: 85.16, color: "#6d8dff", note: "Distil cultural explanations into the model. 85.16% exact match. Bias: 0.00%." },
   ];
-  const abl = $("#ablation");
-  abl.innerHTML = ABL.map((a) => `
-    <div class="abl">
-      <div class="abl__name">${a.name}<span>${a.sub}</span></div>
-      <div class="abl__rows">
-        ${[["EM ↑", a.em, "em"], ["Bias ↓", a.bias, "bias"], ["Halluc. ↓", a.hall, "hall"]].map(([l, v, k]) => `
-          <div class="abl__row"><span class="mono">${l}</span>
-            <span class="abl__track"><span class="abl__fill abl__fill--${k}" data-w="${v}"></span></span>
-            <span class="mono">${fmt(v)}</span></div>`).join("")}
+  const melt = $("#results");
+  const meltNum = $("#meltNum");
+  const meltDots = $$("#meltDots li");
+  let meltStage = -1;
+  function drawMelt() {
+    const r = melt.getBoundingClientRect();
+    const p = clamp(-r.top / (r.height - innerHeight), 0, 1);
+    const f = p * (STAGES.length - 1);
+    const i = Math.min(STAGES.length - 2, Math.floor(f));
+    const t = clamp((f - i - 0.35) / 0.3, 0, 1); // hold, then move
+    meltNum.textContent = lerp(STAGES[i].em, STAGES[i + 1].em, t).toFixed(2);
+    const s = Math.round(f);
+    if (s !== meltStage) {
+      meltStage = s;
+      $("#meltStage").textContent = STAGES[s].name;
+      $("#meltNote").textContent = STAGES[s].note;
+      $("#meltGlow").style.background = STAGES[s].color;
+      meltDots.forEach((d, j) => d.classList.toggle("is-on", j === s));
+    }
+  }
+  meltDots.forEach((d, j) => {
+    d.style.cursor = "pointer";
+    d.addEventListener("click", () => {
+      const top = melt.offsetTop + (melt.offsetHeight - innerHeight) * (j / (STAGES.length - 1));
+      scrollTo({ top, behavior: reduced ? "auto" : "smooth" });
+    });
+  });
+
+  /* ---------------- race ---------------- */
+  const LANES = [
+    { name: "Qwen2.5-1.5B", tag: "open", prompt: 30.97, kd: 85.16 },
+    { name: "Llama-3.2-3B", tag: "open", prompt: 22.58, kd: 82.42 },
+    { name: "TituLLM-1B", tag: "Bangla", prompt: 1.14, kd: 87.91, crown: true },
+    { name: "GPT-4o-mini", tag: "closed", prompt: 49.68, kd: null },
+  ];
+  const board = $("#raceBoard");
+  board.insertAdjacentHTML("beforeend", LANES.map((l) => `
+    <div class="lane${l.crown ? " lane--crown" : ""}">
+      <div class="lane__name">${l.name}<em>${l.tag}</em></div>
+      <div class="lane__track" role="img" aria-label="${l.name}: best prompting ${l.prompt}%${l.kd ? `, after QLoRA-KD ${l.kd}%` : ""}">
+        ${l.kd ? `<div class="lane__bar lane__bar--kd" data-w="${l.kd}">${l.kd.toFixed(2)}</div>` : ""}
+        <div class="lane__bar lane__bar--prompt" data-w="${l.prompt}">${l.prompt.toFixed(2)}</div>
       </div>
-    </div>`).join("");
-  whenVisible(abl, () => $$(".abl__fill", abl).forEach((f) => { f.style.width = f.dataset.w + "%"; }));
+    </div>`).join(""));
+  whenVisible(board, () => $$(".lane__bar", board).forEach((b) => { b.style.width = `max(${b.dataset.w}%, 64px)`; }), 0.2);
 
   /* ---------------- figures ---------------- */
-  $$(".seg__btn").forEach((btn) => btn.addEventListener("click", () => {
-    $$(".seg__btn").forEach((b) => b.classList.toggle("is-on", b === btn));
-    $$("#figs img").forEach((img) => { img.src = `assets/figures/${img.dataset.base}${btn.dataset.fig}.png`; });
+  $$(".seg__b").forEach((b) => b.addEventListener("click", () => {
+    $$(".seg__b").forEach((x) => x.classList.toggle("is-on", x === b));
+    $$("#figRail img").forEach((img) => { img.src = `assets/figures/${img.dataset.base}${b.dataset.fig}.png`; });
   }));
-  $$("#figs img").forEach((img) => img.addEventListener("click", () => {
+  $$("#figRail img").forEach((img) => img.addEventListener("click", () => {
     const lb = document.createElement("div");
     lb.className = "lightbox";
     lb.innerHTML = `<img src="${img.src}" alt="${img.alt}">`;
-    const close = () => { lb.remove(); document.removeEventListener("keydown", esc); };
+    const close = () => { lb.remove(); removeEventListener("keydown", esc); };
     const esc = (e) => { if (e.key === "Escape") close(); };
     lb.addEventListener("click", close);
-    document.addEventListener("keydown", esc);
+    addEventListener("keydown", esc);
     document.body.appendChild(lb);
   }));
 
-  /* ---------------- exercise ---------------- */
+  /* ---------------- game ---------------- */
   const LABELS = ["Name", "Concept", "Emotion", "Emotional State", "Collective State", "Spiritual"];
-  const ex = {
-    data: [], pool: [], cur: null, picks: {}, checked: false,
-    right: 0, total: 0, bangla: false,
-  };
+  const g = { data: [], pool: [], cur: null, picks: {}, done: false, right: 0, total: 0, streak: 0, bn: false };
+  const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-
-  // Highlight the first two occurrences of the target word
-  function markSentence(text, word) {
-    const parts = [];
-    let from = 0, n = 0, idx;
-    while (n < 2 && (idx = text.indexOf(word, from)) !== -1) {
-      parts.push(escapeHtml(text.slice(from, idx)));
+  function markSentence(text, w) {
+    const out = []; let from = 0, n = 0, i;
+    while (n < 2 && (i = text.indexOf(w, from)) !== -1) {
+      out.push(esc(text.slice(from, i)));
       n += 1;
-      parts.push(`<span class="tok tok--plain" data-slot="${n}">${escapeHtml(word)}<sup>${n}</sup></span>`);
-      from = idx + word.length;
+      out.push(`<span class="gt" data-slot="${n}">${esc(w)}<sup>${n}</sup></span>`);
+      from = i + w.length;
     }
-    parts.push(escapeHtml(text.slice(from)));
-    return parts.join("");
+    out.push(esc(text.slice(from)));
+    return out.join("");
   }
 
-  function renderChoices() {
-    $$(".ex__q").forEach((fs) => {
-      const slot = fs.dataset.slot;
-      $(".choices", fs).innerHTML = LABELS.map((l) =>
-        `<button type="button" class="choice" data-label="${l}" aria-pressed="false">${l}</button>`).join("");
-      fs.addEventListener("click", (e) => {
-        const c = e.target.closest(".choice");
-        if (!c || ex.checked) return;
-        ex.picks[slot] = c.dataset.label;
-        $$(".choice", fs).forEach((b) => b.setAttribute("aria-pressed", String(b === c)));
-        $("#exCheck").disabled = !(ex.picks[1] && ex.picks[2]);
-      });
+  $$(".q").forEach((fs) => {
+    const slot = fs.dataset.slot;
+    $(".chips", fs).innerHTML = LABELS.map((l) => `<button type="button" class="chip" data-label="${l}" aria-pressed="false">${l}</button>`).join("");
+    fs.addEventListener("click", (e) => {
+      const c = e.target.closest(".chip");
+      if (!c || g.done) return;
+      g.picks[slot] = c.dataset.label;
+      $$(".chip", fs).forEach((b) => b.setAttribute("aria-pressed", String(b === c)));
+      $("#gCheck").disabled = !(g.picks[1] && g.picks[2]);
     });
-  }
+  });
 
   function renderWhy() {
-    const c = ex.cur;
-    $("#exWhy1").textContent = ex.bangla ? c.why1_bn : c.why1_en;
-    $("#exWhy2").textContent = ex.bangla ? c.why2_bn : c.why2_en;
-    $$("#exWhy1, #exWhy2").forEach((p) => p.classList.toggle("bn", ex.bangla));
-    $("#exLang").textContent = ex.bangla ? "English explanation" : "বাংলা ব্যাখ্যা";
-    $("#exLang").setAttribute("aria-pressed", String(ex.bangla));
+    const c = g.cur;
+    $("#gWhy1").textContent = g.bn ? c.why1_bn : c.why1_en;
+    $("#gWhy2").textContent = g.bn ? c.why2_bn : c.why2_en;
+    $$("#gWhy1, #gWhy2").forEach((p) => p.classList.toggle("bn-text", g.bn));
+    $("#gLang").textContent = g.bn ? "English" : "বাংলা";
   }
 
   function nextItem() {
-    if (!ex.pool.length) return;
+    if (!g.pool.length) return;
     let c;
-    do { c = ex.pool[Math.floor(Math.random() * ex.pool.length)]; }
-    while (ex.pool.length > 1 && c === ex.cur);
-    ex.cur = c; ex.picks = {}; ex.checked = false;
-
-    $("#exId").textContent = "#" + c.id;
-    $("#exType").textContent = c.cat;
-    $("#exSentence").innerHTML = markSentence(c.bn, c.w);
-    $("#exEnglish").textContent = "“" + c.en + "”";
-    $$(".choice").forEach((b) => { b.className = "choice"; b.setAttribute("aria-pressed", "false"); });
-    $("#exCheck").disabled = true;
-    $("#exReveal").hidden = true;
+    do { c = g.pool[Math.floor(Math.random() * g.pool.length)]; } while (g.pool.length > 1 && c === g.cur);
+    g.cur = c; g.picks = {}; g.done = false;
+    $("#gId").textContent = "#" + c.id;
+    $("#gType").textContent = c.cat.replace("↔", " ↔ ");
+    $("#gSentence").innerHTML = markSentence(c.bn, c.w);
+    $("#gEnglish").textContent = "“" + c.en + "”";
+    $$(".chip").forEach((b) => { b.className = "chip"; b.setAttribute("aria-pressed", "false"); });
+    $("#gCheck").disabled = true;
+    $("#gNext").textContent = "Skip →";
+    $("#gReveal").hidden = true;
   }
 
   function check() {
-    if (ex.checked || !(ex.picks[1] && ex.picks[2])) return;
-    ex.checked = true;
-    $("#exCheck").disabled = true;
-    const c = ex.cur;
-    const gold = { 1: c.l1, 2: c.l2 };
+    if (g.done || !(g.picks[1] && g.picks[2])) return;
+    g.done = true;
+    $("#gCheck").disabled = true;
+    const c = g.cur, gold = { 1: c.l1, 2: c.l2 };
     let ok = 0;
-    $$(".ex__q").forEach((fs) => {
-      const slot = fs.dataset.slot;
-      $$(".choice", fs).forEach((b) => {
-        if (b.dataset.label === gold[slot]) b.classList.add("is-correct");
-        else if (b.dataset.label === ex.picks[slot]) b.classList.add("is-wrong");
+    $$(".q").forEach((fs) => {
+      const s = fs.dataset.slot;
+      $$(".chip", fs).forEach((b) => {
+        if (b.dataset.label === gold[s]) b.classList.add("is-right");
+        else if (b.dataset.label === g.picks[s]) b.classList.add("is-wrong");
       });
-      if (ex.picks[slot] === gold[slot]) ok += 1;
+      if (g.picks[s] === gold[s]) ok += 1;
     });
-    $$("#exSentence .tok").forEach((t) => {
-      const lab = gold[t.dataset.slot];
-      t.className = "tok " + (lab === "Name" ? "tok--name" : "tok--sense");
-    });
+    $$("#gSentence .gt").forEach((t) => t.classList.add(gold[t.dataset.slot] === "Name" ? "gt--name" : "gt--sense"));
 
-    ex.total += 1;
-    if (ok === 2) ex.right += 1;
-    $("#exScore").textContent = `Score ${ex.right} / ${ex.total}`;
+    g.total += 1;
+    if (ok === 2) { g.right += 1; g.streak += 1; } else g.streak = 0;
+    $("#gScore").textContent = `${g.right}/${g.total}`;
+    $("#gStreak").textContent = g.streak;
 
-    // was the reader caught by the dominant-meaning trap?
-    const missedName = [1, 2].some((s) => gold[s] === "Name" && ex.picks[s] !== "Name");
-    $("#exVerdict").textContent = ok === 2
-      ? "Exact match. Both readings correct."
-      : missedName
-        ? "You missed the name. That is the dominant-meaning bias LLMs show too."
-        : ok === 1 ? "One of two correct." : "Not this time. Read the explanation below.";
-    $("#exL1").textContent = c.l1;
-    $("#exL2").textContent = c.l2;
-    $("#exNote").textContent = c.note_en;
+    const missedName = [1, 2].some((s) => gold[s] === "Name" && g.picks[s] !== "Name");
+    $("#gVerdict").textContent = ok === 2
+      ? (g.streak > 2 ? `Perfect. ${g.streak} in a row: better than GPT-4o-mini.` : "Perfect. Both readings right.")
+      : missedName ? "You missed the name. That's the same bias the models have."
+        : ok === 1 ? "Half right. Here's the reasoning." : "Not quite. Here's the reasoning.";
+    $("#gL1").textContent = c.l1;
+    $("#gL2").textContent = c.l2;
+    $("#gNote").textContent = c.note_en;
     renderWhy();
-    $("#exReveal").hidden = false;
+    $("#gReveal").hidden = false;
+    $("#gNext").textContent = "Next sentence →";
   }
 
-  function applyFilter() {
-    const v = $("#exCat").value;
-    ex.pool = v ? ex.data.filter((d) => d.cat === v) : ex.data.slice();
+  function filter() {
+    const v = $("#gCat").value;
+    g.pool = v ? g.data.filter((d) => d.cat === v) : g.data.slice();
     nextItem();
   }
 
-  renderChoices();
-  $("#exCheck").addEventListener("click", check);
-  $("#exNext").addEventListener("click", nextItem);
-  $("#exLang").addEventListener("click", () => { ex.bangla = !ex.bangla; if (ex.cur) renderWhy(); });
-  $("#exCat").addEventListener("change", applyFilter);
+  $("#gCheck").addEventListener("click", check);
+  $("#gNext").addEventListener("click", nextItem);
+  $("#gLang").addEventListener("click", () => { g.bn = !g.bn; if (g.done) renderWhy(); else $("#gLang").textContent = g.bn ? "English" : "বাংলা"; });
+  $("#gCat").addEventListener("change", filter);
 
   fetch("data/samples.json")
     .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then((data) => {
-      ex.data = data;
+      g.data = data;
       const cats = Array.from(new Set(data.map((d) => d.cat))).sort();
-      $("#exCat").insertAdjacentHTML("beforeend",
-        cats.map((c) => `<option value="${c}">${c.replace("↔", " ↔ ")}</option>`).join(""));
-      applyFilter();
+      $("#gCat").insertAdjacentHTML("beforeend", cats.map((c) => `<option value="${c}">${c.replace("↔", " ↔ ")}</option>`).join(""));
+      filter();
     })
-    .catch(() => {
-      $("#exSentence").textContent = "Could not load sample data. Open this page through a web server (e.g. GitHub Pages) rather than as a local file.";
-      $("#exSentence").classList.remove("bn");
-    });
+    .catch(() => { $("#gSentence").textContent = "Could not load the sample sentences. Open the site through a web server, e.g. GitHub Pages."; });
 
   /* ---------------- copy bibtex ---------------- */
   $("#copyBib").addEventListener("click", async () => {
-    const btn = $("#copyBib");
-    const text = $("#bibtex").innerText;
-    try {
-      await navigator.clipboard.writeText(text);
-      btn.textContent = "Copied ✓";
-    } catch (e) {
-      const r = document.createRange();
-      r.selectNodeContents($("#bibtex"));
+    const b = $("#copyBib");
+    try { await navigator.clipboard.writeText($("#bibtex").innerText); b.textContent = "copied ✓"; }
+    catch (e) {
+      const r = document.createRange(); r.selectNodeContents($("#bibtex"));
       const s = getSelection(); s.removeAllRanges(); s.addRange(r);
-      btn.textContent = "Press Ctrl+C";
+      b.textContent = "press ctrl+c";
     }
-    setTimeout(() => { btn.textContent = "Copy BibTeX"; }, 1800);
+    setTimeout(() => { b.textContent = "copy"; }, 1800);
   });
 
-  /* ---------------- reveal-on-scroll ---------------- */
-  if ("IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("is-in"); io.unobserve(e.target); } });
-    }, { threshold: 0.08 });
-    $$(".unit > *").forEach((el) => { el.classList.add("reveal"); io.observe(el); });
+  /* ---------------- nav active + reveal ---------------- */
+  const navLinks = $$(".nav__links a");
+  const navTargets = navLinks.map((a) => $(a.getAttribute("href")));
+  function drawNav() {
+    const y = innerHeight * 0.4;
+    let active = -1;
+    navTargets.forEach((t, i) => { if (t && t.getBoundingClientRect().top < y) active = i; });
+    navLinks.forEach((a, i) => a.classList.toggle("is-active", i === active));
   }
+
+  if (!reduced && "IntersectionObserver" in window) {
+    const io = new IntersectionObserver((es) => es.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add("is-in"); io.unobserve(e.target); }
+    }), { threshold: 0.12 });
+    $$(".lens__head, .lens__card, .cats, .data h2, .tile, .race h2, .lane, .vs__side, .vs__cap, .find, .play__head, .game, .figs__rail, .term")
+      .forEach((el, i) => { el.classList.add("rv"); el.style.transitionDelay = `${(i % 4) * 70}ms`; io.observe(el); });
+  }
+
+  let ticking = false;
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => { litManifesto(); drawMelt(); drawNav(); ticking = false; });
+  }
+  addEventListener("scroll", onScroll, { passive: true });
+  addEventListener("resize", onScroll);
+  litManifesto(); drawMelt(); drawNav();
 })();

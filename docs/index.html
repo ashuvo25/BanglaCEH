@@ -4,183 +4,219 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>When a Name Is Not a Name</title>
-  <meta name="description" content="A benchmark dataset and distilled reasoning for Culturally Entangled Bangla Homographs (CEH) in low-resource LLMs. 10th Widening NLP Workshop (WiNLP 2026), ACL Anthology.">
-  <meta name="theme-color" content="#0a0908">
+  <meta name="description" content="A benchmark dataset and distilled reasoning for Culturally Entangled Bangla Homographs (BanglaCEH). Proceedings of the 10th Widening NLP Workshop, ACL Anthology.">
+  <meta name="theme-color" content="#f4ecdc">
   <meta property="og:title" content="When a Name Is Not a Name">
   <meta property="og:description" content="মায়া is both a girl's name and a word for affectionate compassion. Can LLMs tell the difference?">
   <meta property="og:type" content="website">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪷</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Baloo+Da+2:wght@600;800&family=Noto+Serif+Bengali:wght@500;700;900&family=Hind+Siliguri:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Noto+Serif+Bengali:wght@400;600;700;800&family=Hind+Siliguri:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<div class="grain" aria-hidden="true"></div>
-<div class="cursor" aria-hidden="true"></div>
+<!-- reusable stitched lotus -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="lotus" viewBox="0 0 200 140">
+      <path d="M100 18 C120 45 120 85 100 112 C80 85 80 45 100 18Z"/>
+      <path d="M100 112 C88 80 60 58 30 52 C34 86 62 110 100 112Z"/>
+      <path d="M100 112 C112 80 140 58 170 52 C166 86 138 110 100 112Z"/>
+      <path d="M100 112 C80 96 40 92 8 100 C30 122 70 126 100 112Z"/>
+      <path d="M100 112 C120 96 160 92 192 100 C170 122 130 126 100 112Z"/>
+      <path d="M40 128 C80 120 120 120 160 128"/>
+    </symbol>
+  </defs>
+</svg>
 
-<!-- ================= NAV ================= -->
-<header class="nav">
-  <a class="nav__logo" href="#top"><span class="bn">নাম</span><span class="nav__slash">/</span>CEH</a>
-  <nav class="nav__links" aria-label="Main">
-    <a href="#idea">Idea</a>
-    <a href="#data">Data</a>
+<header class="top">
+  <a class="brand" href="#top">
+    <svg class="brand__lotus" aria-hidden="true"><use href="#lotus"/></svg>
+    <span>Bangla<b>CEH</b></span>
+  </a>
+  <nav class="top__nav" aria-label="Sections">
+    <a href="#problem">Problem</a>
+    <a href="#quilt">Dataset</a>
     <a href="#results">Results</a>
-    <a href="#play">Play</a>
+    <a href="#play">Try it</a>
     <a href="#cite">Cite</a>
   </nav>
-  <a class="nav__cta" href="https://aclanthology.org/2026.winlp-main.13/" target="_blank" rel="noopener">Read paper ↗</a>
+  <a class="btn btn--red btn--sm" href="https://aclanthology.org/2026.winlp-main.13/" target="_blank" rel="noopener">Paper</a>
 </header>
 
 <main id="top">
 
   <!-- ================= HERO ================= -->
-  <section class="hero" id="hero">
-    <div class="orb orb--a" aria-hidden="true"></div>
-    <div class="orb orb--b" aria-hidden="true"></div>
-
-    <p class="hero__venue mono">10th Widening NLP Workshop <span>·</span> Budapest 2026 <span>·</span> ACL Anthology</p>
-
-    <div class="split" id="split" aria-live="polite">
-      <div class="split__stage" id="splitStage">
-        <div class="split__word bn" aria-hidden="true"><span data-word>মায়া</span></div>
-        <div class="split__line" aria-hidden="true"><span class="split__knob">⇆</span></div>
+  <section class="hero">
+    <div class="hero__text">
+      <p class="eyebrow">Proceedings of the 10th Widening NLP Workshop · Budapest 2026</p>
+      <h1>When a Name<br>Is <em>Not</em> a Name</h1>
+      <p class="hero__sub">A Benchmark Dataset and Distilled Reasoning for Culturally Entangled Bangla Homographs in Low-Resource LLMs</p>
+      <p class="hero__authors">Md. Asaduzzaman Shuvo <span>and</span> Md. Adnanul Islam</p>
+      <div class="hero__btns">
+        <a class="btn btn--red" href="https://aclanthology.org/2026.winlp-main.13/" target="_blank" rel="noopener">ACL Anthology</a>
+        <a class="btn" href="https://aclanthology.org/2026.winlp-main.13.pdf" target="_blank" rel="noopener">PDF</a>
+        <a class="btn" href="https://github.com/ashuvo25/BanglaCEH" target="_blank" rel="noopener">Code &amp; Data</a>
       </div>
-      <p class="split__hint mono" aria-hidden="true">drag across the word</p>
-      <span class="sr-only" id="splitSr">মায়া, Maya: a girl's name, and affectionate compassion</span>
-      <div class="split__tags">
-        <div class="tagline tagline--name">
-          <span class="mono">reading 01 · name</span>
-          <strong id="tagName">Maya, a girl</strong>
+    </div>
+
+    <div class="hero__art" id="twoLives" aria-live="polite">
+      <svg class="hero__lotus" aria-hidden="true"><use href="#lotus"/></svg>
+
+      <!-- life 1: a person -->
+      <div class="nametag">
+        <div class="nametag__top">
+          <span class="nametag__hello">HELLO</span>
+          <span class="nametag__my">আমার নাম</span>
         </div>
-        <div class="tagline tagline--sense">
-          <span class="mono">reading 02 · meaning</span>
-          <strong id="tagSense">affectionate compassion</strong>
+        <div class="nametag__body">
+          <span class="nametag__name bn" data-w>মায়া</span>
         </div>
+        <span class="nametag__cap mono">reading 01 · a person</span>
+      </div>
+
+      <!-- life 2: a word -->
+      <article class="dict">
+        <p class="dict__head"><span class="bn dict__word" data-w>মায়া</span> <span class="dict__ipa" id="dIpa">/māyā/</span></p>
+        <p class="dict__pos"><i>noun</i> · <span id="dKind">emotion</span></p>
+        <p class="dict__def" id="dDef">deep, affectionate compassion; a tender attachment to someone.</p>
+        <span class="dict__cap mono">reading 02 · a meaning</span>
+      </article>
+
+      <div class="hero__ctrl">
+        <span class="mono">Same spelling. Two lives.</span>
+        <button type="button" class="dot-btn" id="nextWord" aria-label="Show next word">next word →</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="stitch" aria-hidden="true"></div>
+
+  <!-- ================= PROBLEM ================= -->
+  <section class="problem" id="problem">
+    <div class="sec-head">
+      <span class="sec-num">১</span>
+      <div>
+        <p class="eyebrow">The problem</p>
+        <h2>Parents name children after what they hope for.</h2>
       </div>
     </div>
 
-    <div class="hero__foot">
-      <h1>When a Name<br><span class="grad">Is Not</span> a Name</h1>
-      <div class="hero__side">
-        <p>A benchmark and distilled reasoning for <b>Culturally Entangled Bangla Homographs</b> in low-resource LLMs.</p>
-        <p class="hero__author">Md. Asaduzzaman Shuvo <span>&amp;</span> Md. Adnanul Islam</p>
-        <div class="hero__btns">
-          <a class="pill pill--solid" href="https://aclanthology.org/2026.winlp-main.13/" target="_blank" rel="noopener">ACL Anthology ↗</a>
-          <a class="pill" href="https://aclanthology.org/2026.winlp-main.13.pdf" target="_blank" rel="noopener">PDF</a>
-          <a class="pill" href="https://github.com/ashuvo25/BanglaCEH" target="_blank" rel="noopener">Code &amp; Data</a>
+    <div class="problem__grid">
+      <div class="problem__copy">
+        <p class="lead">Hope, sky, compassion, faith. In Bangla these are words <em>and</em> names, so the same spelling can point to a person or to the very thing she was named for.</p>
+        <p>We give a model one sentence in which the word appears <b>twice</b>, once in each sense. It must label both occurrences with one of six cultural categories, then explain why.</p>
+        <ul class="cats">
+          <li class="c-name">Name</li><li>Concept</li><li>Emotion</li><li>Emotional State</li><li>Collective State</li><li>Spiritual</li>
+        </ul>
+      </div>
+
+      <div class="read" id="read" data-mode="human">
+        <div class="read__tabs" role="tablist" aria-label="Who is reading">
+          <button type="button" role="tab" aria-selected="true" data-mode="human">A Bangla reader</button>
+          <button type="button" role="tab" aria-selected="false" data-mode="llm">A typical LLM</button>
         </div>
-      </div>
-    </div>
-
-    <a class="scrollhint mono" href="#idea"><span></span>scroll</a>
-  </section>
-
-  <!-- ================= MARQUEE ================= -->
-  <div class="marquee" aria-hidden="true">
-    <div class="marquee__track" id="marquee"></div>
-  </div>
-
-  <!-- ================= IDEA ================= -->
-  <section class="idea" id="idea">
-    <p class="kicker mono">01 — The idea</p>
-    <p class="manifesto" id="manifesto">In Bangla, parents name their children after what they hope for. Hope. Sky. Compassion. Faith. So one word can be a person, or the very thing she was named for. Language models see the word and forget the girl.</p>
-  </section>
-
-  <!-- ================= READ LIKE A MODEL ================= -->
-  <section class="lens" id="lens">
-    <div class="lens__head">
-      <p class="kicker mono">02 — The task</p>
-      <h2>One sentence.<br>Same word, twice.<br><span class="grad">Two meanings.</span></h2>
-      <p class="dim">Label both occurrences with one of six cultural categories, and explain why. Flip the switch to see how a typical LLM reads it.</p>
-    </div>
-
-    <div class="lens__card" id="lensCard" data-mode="human">
-      <div class="switch" role="group" aria-label="Reading mode">
-        <button type="button" class="switch__btn is-on" data-mode="human">Human reading</button>
-        <button type="button" class="switch__btn" data-mode="llm">LLM reading</button>
-        <span class="switch__thumb" aria-hidden="true"></span>
-      </div>
-
-      <p class="lens__sentence bn">
-        <span class="tk tk--1"><span class="tk__w">মায়া</span><span class="tk__l mono"></span></span> নামের মেয়েটিকে একাকী বসে কাঁদতে দেখে উপস্থিত সবার মনেই এক গভীর
-        <span class="tk tk--2"><span class="tk__w">মায়া</span><span class="tk__l mono"></span></span> জেগে উঠল।
-      </p>
-      <p class="lens__en">“Seeing the girl named <b>Maya</b> crying all alone, a deep compassionate <b>tenderness</b> awoke in everyone present.”</p>
-      <p class="lens__verdict mono" id="lensVerdict"></p>
-    </div>
-
-    <ul class="cats" aria-label="The six categories">
-      <li class="cats__name">Name</li><li>Concept</li><li>Emotion</li><li>Emotional State</li><li>Collective State</li><li>Spiritual</li>
-    </ul>
-  </section>
-
-  <!-- ================= DATA ================= -->
-  <section class="data" id="data">
-    <p class="kicker mono">03 — The benchmark</p>
-    <h2>Built by hand.<br><span class="grad">Checked twice.</span></h2>
-
-    <div class="bento">
-      <div class="tile tile--big">
-        <span class="tile__n" data-count="1516">0</span>
-        <span class="tile__l">human-verified instances</span>
-        <span class="tile__s mono">78 / 10 / 12 train · val · test</span>
-      </div>
-      <div class="tile">
-        <span class="tile__n" data-count="3032">0</span>
-        <span class="tile__l">labelled occurrences</span>
-      </div>
-      <div class="tile">
-        <span class="tile__n" data-count="0.95" data-decimals="2">0</span>
-        <span class="tile__l">Cohen's κ between annotators</span>
-      </div>
-      <div class="tile tile--donut">
-        <div class="donut" id="donut" role="img" aria-label="Entanglement types"><span><b>5</b>entanglement<br>types</span></div>
-        <ul class="legend" id="legend"></ul>
-      </div>
-      <div class="tile tile--wide">
-        <p class="mono tile__cap">How each instance was made</p>
-        <ol class="steps">
-          <li><b>Pick</b> A native speaker hand-picks words with real dual readings.</li>
-          <li><b>Generate</b> Three LLMs draft sentences and cultural explanations.</li>
-          <li><b>Cross-check</b> Round-robin: no model audits its own output.</li>
-          <li><b>Verify</b> Two native Bangla annotators have the final say.</li>
-        </ol>
+        <p class="read__s bn">
+          <span class="w w1"><b>মায়া</b><small class="mono"></small></span> নামের মেয়েটিকে একাকী বসে কাঁদতে দেখে উপস্থিত সবার মনেই এক গভীর
+          <span class="w w2"><b>মায়া</b><small class="mono"></small></span> জেগে উঠল।
+        </p>
+        <p class="read__en">“Seeing the girl named <b>Maya</b> crying all alone, a deep compassionate <b>tenderness</b> awoke in everyone present.”</p>
+        <p class="read__verdict" id="readVerdict"></p>
       </div>
     </div>
   </section>
 
-  <!-- ================= MELTDOWN (sticky scroll) ================= -->
-  <section class="melt" id="results" aria-label="Qwen2.5-1.5B exact match across methods">
-    <div class="melt__sticky">
-      <div class="melt__glow" id="meltGlow" aria-hidden="true"></div>
-      <p class="kicker mono">04 — Results · Qwen2.5-1.5B</p>
-      <div class="melt__stage mono" id="meltStage">Zero-shot</div>
-      <div class="melt__num"><span id="meltNum">0.65</span><small>%</small></div>
-      <p class="melt__label mono">exact match</p>
-      <p class="melt__note" id="meltNote">Out of the box, it almost never gets both readings right. 63.46% of the time it simply misses the name.</p>
-      <ol class="melt__dots" id="meltDots">
-        <li class="is-on">Zero-shot</li><li>Few-shot</li><li>Cultural CoT</li><li>QLoRA-KD</li>
-      </ol>
+  <div class="stitch" aria-hidden="true"></div>
+
+  <!-- ================= QUILT (dataset) ================= -->
+  <section class="quilt" id="quilt">
+    <div class="sec-head">
+      <span class="sec-num">২</span>
+      <div>
+        <p class="eyebrow">The benchmark</p>
+        <h2>A quilt of 1,516 sentences, stitched by hand.</h2>
+      </div>
     </div>
+
+    <div class="patches">
+      <div class="patch patch--red"><span class="patch__n" data-count="1516">1,516</span><span class="patch__l">expert-verified sentences</span></div>
+      <div class="patch patch--indigo"><span class="patch__n" data-count="3032">3,032</span><span class="patch__l">labelled occurrences</span></div>
+      <div class="patch patch--gold"><span class="patch__n">6</span><span class="patch__l">cultural categories</span></div>
+      <div class="patch patch--green"><span class="patch__n" data-count="0.95" data-decimals="2">0.95</span><span class="patch__l">Cohen's κ between annotators</span></div>
+    </div>
+
+    <h3 class="h3">Five kinds of entanglement <span class="mono">· area = number of sentences</span></h3>
+    <div class="tree" id="tree" role="img" aria-label="Name ↔ Concept 795, Concept ↔ Emotion 193, Name ↔ Spiritual 179, Name ↔ Emotion 178, Emotion ↔ State 171">
+      <div class="tree__big"><b>Name ↔ Concept</b><span>795</span><em class="bn">গগন · আশা · দীপ্তি</em></div>
+      <div class="tree__rest">
+        <div><b>Concept ↔ Emotion</b><span>193</span></div>
+        <div><b>Name ↔ Spiritual</b><span>179</span></div>
+        <div><b>Name ↔ Emotion</b><span>178</span></div>
+        <div><b>Emotion ↔ State</b><span>171</span></div>
+      </div>
+    </div>
+
+    <h3 class="h3">How each sentence was made</h3>
+    <ol class="thread">
+      <li><span>01</span><b>Pick the words</b>A native speaker hand-picks words with real dual readings.</li>
+      <li><span>02</span><b>Draft</b>Three different LLMs write sentences and cultural explanations.</li>
+      <li><span>03</span><b>Cross-check</b>Round-robin review, so no model checks its own work.</li>
+      <li><span>04</span><b>Human verify</b>Two native Bangla annotators have the final word.</li>
+    </ol>
   </section>
 
-  <!-- ================= RACE ================= -->
-  <section class="race" id="race">
-    <p class="kicker mono">05 — Small beats big</p>
-    <h2>Every 1–3B model, distilled,<br><span class="grad">clears GPT-4o-mini.</span></h2>
+  <div class="stitch" aria-hidden="true"></div>
 
-    <div class="race__board" id="raceBoard">
-      <div class="race__ceiling" style="--x:49.68%"><span class="mono">GPT-4o-mini best · 49.68</span></div>
-    </div>
-    <div class="race__key mono">
-      <span><i class="k k--prompt"></i>best prompting</span>
-      <span><i class="k k--kd"></i>after QLoRA-KD</span>
+  <!-- ================= RESULTS ================= -->
+  <section class="results" id="results">
+    <div class="sec-head">
+      <span class="sec-num">৩</span>
+      <div>
+        <p class="eyebrow">Results · exact match on the test set</p>
+        <h2>Prompting barely helps. <em>Teaching the reason</em> does.</h2>
+      </div>
     </div>
 
-    <details class="fulltable">
-      <summary class="mono">Full numbers (EM %)</summary>
+    <div class="results__grid">
+      <div class="chartcard">
+        <div class="tabs" id="modelTabs" role="tablist" aria-label="Model"></div>
+        <div class="sewn" id="sewn"></div>
+        <p class="chartcard__note" id="chartNote"></p>
+      </div>
+
+      <aside class="bigstat">
+        <p class="eyebrow">The headline</p>
+        <p class="bigstat__n">87.91<small>%</small></p>
+        <p>TituLLM-1B, the Bangla model that failed every prompt, becomes the <b>strongest system</b> after distillation.</p>
+        <hr>
+        <p class="bigstat__row"><span>Bias, zero-shot (Qwen)</span><b class="t-red">63.46%</b></p>
+        <p class="bigstat__row"><span>Bias, Cultural CoT</span><b>2.88%</b></p>
+        <p class="bigstat__row"><span>Bias, QLoRA-KD</span><b class="t-green">0.00%</b></p>
+      </aside>
+    </div>
+
+    <div class="lessons">
+      <article class="lesson">
+        <span class="lesson__badge">i</span>
+        <h3>Models forget the person</h3>
+        <p>Open and closed LLMs default to the common-noun sense. Zero-shot dominant-meaning bias reaches <b>100%</b>.</p>
+      </article>
+      <article class="lesson">
+        <span class="lesson__badge">ii</span>
+        <h3>Language is not culture</h3>
+        <p>A Bangla-specific model fails under every prompting regime. Pretraining on the language alone is not enough.</p>
+      </article>
+      <article class="lesson">
+        <span class="lesson__badge">iii</span>
+        <h3>Teach why, not which</h3>
+        <p>Labels-only distillation reaches 41.33% EM. Distilling the <b>explanations</b> reaches 85.16%, with bias down from 34.56% to 0%.</p>
+      </article>
+    </div>
+
+    <details class="numbers">
+      <summary>See all numbers</summary>
       <div class="tablewrap">
         <table>
           <thead><tr><th>Model</th><th>Zero-shot</th><th>Few-shot</th><th>C-CoT</th><th>QLoRA-KD</th><th>KD bias ↓</th></tr></thead>
@@ -192,123 +228,86 @@
           </tbody>
         </table>
       </div>
+      <p class="numbers__ab"><b>Ablation (Qwen2.5-1.5B):</b> zero-shot 0.65 EM / 63.46 bias / 52.9 halluc. · KD labels-only 41.33 / 34.56 / 36.11 · QLoRA-KD reasoning + label 85.16 / 0 / 1.65</p>
     </details>
   </section>
 
-  <!-- ================= ABLATION ================= -->
-  <section class="vs" id="vs">
-    <p class="kicker mono">06 — Teach the why</p>
-    <div class="vs__grid">
-      <div class="vs__side">
-        <p class="mono vs__tag">Distil labels only</p>
-        <p class="vs__big">41.33<small>% EM</small></p>
-        <p class="vs__row"><span>Bias</span><b>34.56%</b></p>
-        <p class="vs__row"><span>Hallucination</span><b>36.11%</b></p>
-      </div>
-      <div class="vs__mid" aria-hidden="true">vs</div>
-      <div class="vs__side vs__side--win">
-        <p class="mono vs__tag">Distil reasons + labels</p>
-        <p class="vs__big">85.16<small>% EM</small></p>
-        <p class="vs__row"><span>Bias</span><b>0.00%</b></p>
-        <p class="vs__row"><span>Hallucination</span><b>1.65%</b></p>
-      </div>
-    </div>
-    <p class="vs__cap">Same model, same data. Teaching <em>why</em> a reading is right, not just <em>which</em>, doubles accuracy and removes the bias.</p>
-  </section>
-
-  <!-- ================= FINDINGS ================= -->
-  <section class="finds" id="finds">
-    <p class="kicker mono">07 — What we learned</p>
-    <div class="finds__grid">
-      <article class="find">
-        <span class="find__n">100%</span>
-        <h3>Models default to the dominant meaning</h3>
-        <p>Open and closed LLMs read the common noun and overlook the person. Zero-shot bias reaches 100%.</p>
-      </article>
-      <article class="find">
-        <span class="find__n">≠</span>
-        <h3>Language is not culture</h3>
-        <p>TituLLM, a Bangla-specific model, fails under every prompting regime. Knowing the language is not knowing the culture.</p>
-      </article>
-      <article class="find">
-        <span class="find__n">2.88%</span>
-        <h3>Arguing both sides works</h3>
-        <p>Cultural Chain-of-Thought makes the model argue for both readings first. Qwen's bias falls from 63.46% with no training.</p>
-      </article>
-      <article class="find find--hl">
-        <span class="find__n">87.91%</span>
-        <h3>The underdog wins</h3>
-        <p>After distilling explanations, the failing Bangla model becomes the strongest system of all.</p>
-      </article>
-    </div>
-  </section>
+  <div class="stitch" aria-hidden="true"></div>
 
   <!-- ================= PLAY ================= -->
   <section class="play" id="play">
-    <div class="play__head">
-      <p class="kicker mono">08 — Your turn</p>
-      <h2>Name, or <span class="grad">not?</span></h2>
-      <p class="dim">Real sentences from the benchmark. Label both highlighted words, then compare with the gold explanation.</p>
+    <div class="sec-head">
+      <span class="sec-num">৪</span>
+      <div>
+        <p class="eyebrow">Try it yourself</p>
+        <h2>Person, or meaning?</h2>
+      </div>
     </div>
 
     <div class="game" id="game">
-      <div class="game__bar mono">
-        <select id="gCat" aria-label="Filter by entanglement type"><option value="">All types</option></select>
-        <span class="game__score">Streak <b id="gStreak">0</b> · Score <b id="gScore">0/0</b></span>
+      <div class="game__bar">
+        <select id="gCat" aria-label="Filter by type"><option value="">All types</option></select>
+        <span class="mono">score <b id="gScore">0/0</b> · streak <b id="gStreak">0</b></span>
       </div>
-
-      <p class="game__meta mono"><span id="gId">#—</span> · <span id="gType">—</span></p>
-      <p class="game__sentence bn" id="gSentence">Loading…</p>
+      <p class="game__meta mono"><span id="gId">#</span> · <span id="gType"></span></p>
+      <p class="game__s bn" id="gSentence">Loading…</p>
       <p class="game__en" id="gEnglish"></p>
-
       <div class="game__qs">
-        <fieldset class="q" data-slot="1"><legend class="mono">Word ¹</legend><div class="chips"></div></fieldset>
-        <fieldset class="q" data-slot="2"><legend class="mono">Word ²</legend><div class="chips"></div></fieldset>
+        <fieldset class="q" data-slot="1"><legend>First word ¹</legend><div class="chips"></div></fieldset>
+        <fieldset class="q" data-slot="2"><legend>Second word ²</legend><div class="chips"></div></fieldset>
       </div>
-
-      <div class="game__actions">
-        <button type="button" class="pill pill--solid" id="gCheck" disabled>Check</button>
-        <button type="button" class="pill" id="gNext">Skip →</button>
-        <button type="button" class="pill pill--ghost" id="gLang">বাংলা</button>
+      <div class="game__btns">
+        <button type="button" class="btn btn--red" id="gCheck" disabled>Check</button>
+        <button type="button" class="btn" id="gNext">Another sentence</button>
+        <button type="button" class="btn btn--ghost" id="gLang">বাংলায় ব্যাখ্যা</button>
       </div>
-
-      <div class="game__reveal" id="gReveal" hidden>
+      <div class="game__out" id="gOut" hidden>
         <p class="game__verdict" id="gVerdict"></p>
         <div class="game__why">
-          <div><p class="mono">Why ¹ is <b id="gL1"></b></p><p id="gWhy1"></p></div>
-          <div><p class="mono">Why ² is <b id="gL2"></b></p><p id="gWhy2"></p></div>
+          <div><p class="mono">why ¹ is <b id="gL1"></b></p><p id="gWhy1"></p></div>
+          <div><p class="mono">why ² is <b id="gL2"></b></p><p id="gWhy2"></p></div>
         </div>
-        <div class="game__note"><p class="mono">The cultural link</p><p id="gNote"></p></div>
+        <p class="game__note"><span class="mono">the cultural thread</span><span id="gNote"></span></p>
       </div>
     </div>
   </section>
+
+  <div class="stitch" aria-hidden="true"></div>
 
   <!-- ================= FIGURES ================= -->
   <section class="figs" id="figs">
-    <div class="figs__head">
-      <p class="kicker mono">09 — Figures</p>
+    <div class="sec-head sec-head--row">
+      <span class="sec-num">৫</span>
+      <div>
+        <p class="eyebrow">Figures from the paper</p>
+        <h2>Under the hood</h2>
+      </div>
       <div class="seg" role="group" aria-label="Model">
-        <button type="button" class="seg__b is-on" data-fig="">Qwen2.5-1.5B</button>
-        <button type="button" class="seg__b" data-fig="-titu">TituLLM-1B</button>
+        <button type="button" class="is-on" data-fig="">Qwen2.5-1.5B</button>
+        <button type="button" data-fig="-titu">TituLLM-1B</button>
       </div>
     </div>
-    <div class="figs__rail" id="figRail" tabindex="0" aria-label="Figures, scroll horizontally">
-      <figure><img loading="lazy" data-base="fig1_loss_curve" src="assets/figures/fig1_loss_curve.png" alt="Training and validation loss during QLoRA-KD"><figcaption class="mono">Fig 1 · Loss during QLoRA-KD</figcaption></figure>
-      <figure><img loading="lazy" data-base="fig2_method_progression" src="assets/figures/fig2_method_progression.png" alt="Exact match and dominant bias across methods"><figcaption class="mono">Fig 2 · EM up, bias down</figcaption></figure>
-      <figure><img loading="lazy" data-base="fig3_per_category" src="assets/figures/fig3_per_category.png" alt="Per-category accuracy"><figcaption class="mono">Fig 3 · Per-category accuracy</figcaption></figure>
-      <figure><img loading="lazy" data-base="fig4_confusion" src="assets/figures/fig4_confusion.png" alt="Label confusion matrix"><figcaption class="mono">Fig 4 · Label confusion</figcaption></figure>
+    <div class="figgrid" id="figgrid">
+      <figure><img loading="lazy" data-base="fig1_loss_curve" src="assets/figures/fig1_loss_curve.png" alt="Training and validation loss during QLoRA-KD"><figcaption>Loss during QLoRA-KD training</figcaption></figure>
+      <figure><img loading="lazy" data-base="fig2_method_progression" src="assets/figures/fig2_method_progression.png" alt="Exact match and dominant bias across methods"><figcaption>Exact match up, bias down, across methods</figcaption></figure>
+      <figure><img loading="lazy" data-base="fig3_per_category" src="assets/figures/fig3_per_category.png" alt="Per-category accuracy"><figcaption>Accuracy per entanglement type</figcaption></figure>
+      <figure><img loading="lazy" data-base="fig4_confusion" src="assets/figures/fig4_confusion.png" alt="Label confusion matrix"><figcaption>Label confusion matrix</figcaption></figure>
     </div>
   </section>
 
+  <div class="stitch" aria-hidden="true"></div>
+
   <!-- ================= CITE ================= -->
   <section class="cite" id="cite">
-    <p class="kicker mono">10 — Cite</p>
-    <div class="term">
-      <div class="term__bar">
-        <i></i><i></i><i></i>
-        <span class="mono">shuvo-islam-2026-name.bib</span>
-        <button type="button" class="term__copy mono" id="copyBib">copy</button>
+    <div class="sec-head">
+      <span class="sec-num">৬</span>
+      <div>
+        <p class="eyebrow">Cite this work</p>
+        <h2>BibTeX</h2>
       </div>
+    </div>
+    <div class="slip">
+      <button type="button" class="btn btn--sm" id="copyBib">Copy</button>
       <pre id="bibtex"><code>@inproceedings{shuvo-islam-2026-name,
     title = "When a Name Is Not a Name: A Benchmark Dataset and Distilled Reasoning for Culturally Entangled {B}angla Homographs in Low-Resource {LLM}s",
     author = "Shuvo, Md. Asaduzzaman  and
@@ -332,21 +331,17 @@
     abstract = "Many Bangla words are at once personal names and culturally loaded common nouns: মায়া (Maya) is both a girl{'}s name and a word for affectionate compassion. Choosing the right reading demands cultural knowledge that is scarce in the pretraining data of modern language models. We introduce Bangla Culturally Entangled Homograph (BanglaCEH) disambiguation and build a Bangla benchmark of 1,516 expert-verified sentences and 3,032 labelled occurrences in which one word appears twice with two distinct readings, each labelled with a culturally grounded category and an explanation of the reasoning behind it. Across open- and closed-source models, we find a systematic dominant-meaning bias, models default to the common-noun sense and overlook the name. A Bangla-specific model fails under every prompting regime we test, showing that language-specific pretraining alone does not confer cultural grounding. We further show that contrastive chain-of-thought prompting can sharply reduce this bias without training, and that distilling cultural explanations teaches small (1{--}3B) models to reason toward the correct reading rather than memorise labels, cutting dominant-meaning bias from as high as 100{\%} to under 5{\%} and turning the failed Bangla-specific model into our strongest system."
 }</code></pre>
     </div>
-    <p class="cite__contact dim">Questions? <a href="mailto:ashuvo221104@bscse.uiu.ac.bd">ashuvo221104@bscse.uiu.ac.bd</a></p>
+    <p class="contact">Questions: <a href="mailto:ashuvo221104@bscse.uiu.ac.bd">ashuvo221104@bscse.uiu.ac.bd</a></p>
   </section>
 
 </main>
 
 <footer class="foot">
-  <p class="foot__big bn" aria-hidden="true">নাম যখন নাম নয়</p>
-  <div class="foot__row mono">
-    <span>Shuvo &amp; Islam · Proceedings of the 10th Widening NLP Workshop, pp. 128–140 · Budapest, 2026</span>
-    <span>
-      <a href="https://aclanthology.org/2026.winlp-main.13/" target="_blank" rel="noopener">ACL Anthology</a> ·
-      <a href="https://github.com/ashuvo25/BanglaCEH" target="_blank" rel="noopener">GitHub</a>
-    </span>
-  </div>
-  <p class="foot__ethics dim">All names are common Bangla given names used generically; no real individuals are referenced. Built at United International University, Bangladesh.</p>
+  <svg class="foot__lotus" aria-hidden="true"><use href="#lotus"/></svg>
+  <p class="foot__bn bn">নাম যখন নাম নয়</p>
+  <p class="foot__meta">Shuvo &amp; Islam · Proceedings of the 10th Widening NLP Workshop, pp. 128–140 · Budapest, 2026</p>
+  <p class="foot__links"><a href="https://aclanthology.org/2026.winlp-main.13/" target="_blank" rel="noopener">ACL Anthology</a> · <a href="https://github.com/ashuvo25/BanglaCEH" target="_blank" rel="noopener">GitHub</a></p>
+  <p class="foot__ethics">All names are common Bangla given names used generically; no real individuals are referenced.</p>
 </footer>
 
 <script src="js/main.js" defer></script>

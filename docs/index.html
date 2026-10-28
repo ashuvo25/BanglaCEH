@@ -39,6 +39,7 @@
   <nav class="top__nav" aria-label="Sections">
     <a href="#problem">Problem</a>
     <a href="#quilt">Dataset</a>
+    <a href="#method">Method</a>
     <a href="#results">Results</a>
     <a href="#play">Try it</a>
     <a href="#cite">Cite</a>
@@ -158,13 +159,197 @@
       </div>
     </div>
 
-    <h3 class="h3">How each sentence was made</h3>
-    <ol class="thread">
-      <li><span>01</span><b>Pick the words</b>A native speaker hand-picks words with real dual readings.</li>
-      <li><span>02</span><b>Draft</b>Three different LLMs write sentences and cultural explanations.</li>
-      <li><span>03</span><b>Cross-check</b>Round-robin review, so no model checks its own work.</li>
-      <li><span>04</span><b>Human verify</b>Two native Bangla annotators have the final word.</li>
+  </section>
+
+  <div class="stitch" aria-hidden="true"></div>
+
+  <!-- ================= METHOD (animated walkthrough) ================= -->
+  <section class="method" id="method">
+    <div class="sec-head">
+      <span class="sec-num">৩</span>
+      <div>
+        <p class="eyebrow">The method, step by step</p>
+        <h2>Six stages, from a word to a verdict.</h2>
+      </div>
+    </div>
+    <p class="method__intro">Scroll through the full pipeline from the paper. Each stage plays as it comes into view; press <b>replay</b> to watch it again.</p>
+
+    <ol class="method__map" id="methodMap" aria-label="Stages">
+      <li><a href="#ch1"><span>1</span>Dataset</a></li>
+      <li><a href="#ch2"><span>2</span>Split</a></li>
+      <li><a href="#ch3"><span>3</span>Prompting</a></li>
+      <li><a href="#ch4"><span>4</span>Output</a></li>
+      <li><a href="#ch5"><span>5</span>Distillation</a></li>
+      <li><a href="#ch6"><span>6</span>Evaluation</a></li>
     </ol>
+
+    <!-- ===== 1. DATASET CREATION ===== -->
+    <article class="ch" id="ch1">
+      <div class="ch__text">
+        <p class="ch__n">Stage 1</p>
+        <h3>Building the dataset</h3>
+        <p>A native Bangla speaker hand-picks words that genuinely live two lives. Three different LLMs then draft a sentence for each word, with the word used <b>twice</b> in two senses, plus an explanation and a cultural note.</p>
+        <p>Verification is <b>round-robin</b>: each model checks another model's output, never its own. Finally two native Bangla annotators review every instance and have the last word (Cohen's κ = 0.95).</p>
+        <ul class="ch__facts"><li>1,516 instances</li><li>3,032 labelled occurrences</li><li>JSON records</li></ul>
+      </div>
+      <div class="ch__scene scene-data" data-scene="data">
+        <button type="button" class="replay">↻ replay</button>
+        <div class="flow">
+          <div class="node node--word"><span class="bn">মায়া</span><small>word picked</small></div>
+          <div class="link"></div>
+          <div class="ring">
+            <svg viewBox="0 0 160 160" aria-hidden="true"><circle cx="80" cy="80" r="58"/></svg>
+            <span class="gen g1">LLM A</span><span class="gen g2">LLM B</span><span class="gen g3">LLM C</span>
+            <small class="ring__lbl">draft &amp; cross-verify</small>
+          </div>
+          <div class="link"></div>
+          <div class="node node--human"><span>👤👤</span><small>2 annotators<br>κ = 0.95</small></div>
+        </div>
+        <pre class="json" data-json></pre>
+        <p class="scene__count"><b data-countup="1516">0</b> verified instances</p>
+      </div>
+    </article>
+
+    <!-- ===== 2. SPLIT ===== -->
+    <article class="ch" id="ch2">
+      <div class="ch__text">
+        <p class="ch__n">Stage 2</p>
+        <h3>Splitting the data</h3>
+        <p>The instances are shuffled with a fixed seed and split three ways. Models learn on the training set, the validation set decides when training stops, and the <b>test set stays unseen</b> until the very end.</p>
+        <ul class="ch__facts"><li><i class="sw sw--indigo"></i>78% train</li><li><i class="sw sw--gold"></i>10% validation</li><li><i class="sw sw--red"></i>12% held-out test</li></ul>
+      </div>
+      <div class="ch__scene scene-split" data-scene="split">
+        <button type="button" class="replay">↻ replay</button>
+        <div class="dots" data-dots aria-label="100 squares: 78 train, 10 validation, 12 test"></div>
+        <div class="split__legend">
+          <span><i class="sw sw--indigo"></i>train <b>78%</b></span>
+          <span><i class="sw sw--gold"></i>val <b>10%</b></span>
+          <span><i class="sw sw--red"></i>test <b>12%</b></span>
+        </div>
+        <p class="scene__note">each square ≈ 15 sentences</p>
+      </div>
+    </article>
+
+    <!-- ===== 3. PROMPTING ===== -->
+    <article class="ch" id="ch3">
+      <div class="ch__text">
+        <p class="ch__n">Stage 3</p>
+        <h3>Three ways to ask</h3>
+        <p><b>Zero-shot:</b> just the instruction. Tested on six models: Qwen2.5-1.5B, Llama-3.2-3B, Ministral-3-3B, gemma-3-1b, TituLLM-1B and GPT-4o-mini.</p>
+        <p><b>Few-shot:</b> three fixed solved examples, one from each major category, go before the question.</p>
+        <p><b>Cultural Chain-of-Thought (C-CoT):</b> for each occurrence the model must write <i>Argument A</i> (why it could be a Name), <i>Argument B</i> (why it could be a concept or feeling), then a <i>Decision</i>. Arguing both sides first is what breaks the bias.</p>
+      </div>
+      <div class="ch__scene scene-prompt" data-scene="prompt">
+        <button type="button" class="replay">↻ replay</button>
+        <div class="ptabs" role="tablist" aria-label="Prompting regime">
+          <button type="button" data-p="zero" class="is-on">Zero-shot</button>
+          <button type="button" data-p="few">Few-shot</button>
+          <button type="button" data-p="ccot">C-CoT</button>
+        </div>
+        <div class="chat">
+          <div class="bubble bubble--sys"><b>system</b> You are an expert in Bangla cultural linguistics…</div>
+          <div class="shots" data-shots>
+            <span>example 1 ✓</span><span>example 2 ✓</span><span>example 3 ✓</span>
+          </div>
+          <div class="bubble bubble--user"><b>user</b> The word <span class="bn">‘মায়া’</span> appears TWICE… <span class="bn">মায়া নামের মেয়েটিকে … গভীর মায়া জেগে উঠল।</span></div>
+          <div class="bubble bubble--bot"><b>model</b><pre data-typed></pre></div>
+        </div>
+        <p class="scene__note">Illustrative replies to the paper's prompts. Measured rates are in Results.</p>
+      </div>
+    </article>
+
+    <!-- ===== 4. OUTPUT ===== -->
+    <article class="ch" id="ch4">
+      <div class="ch__text">
+        <p class="ch__n">Stage 4</p>
+        <h3>Reading the answer</h3>
+        <p>Every model must end with a fixed <code>FINAL:</code> block. A parser pulls out the two labels and keeps the text before it as the model's <b>explanation</b>.</p>
+        <p>If a label is missing or isn't one of the six valid categories, it becomes <b>Unknown</b>. That counts as a <b>hallucination</b>.</p>
+      </div>
+      <div class="ch__scene scene-parse" data-scene="parse">
+        <button type="button" class="replay">↻ replay</button>
+        <div class="parse">
+          <div class="raw">
+            <p class="raw__h">raw model text</p>
+            <p class="raw__l r1">The first মায়া follows নামের (“named”), so it refers to a girl…</p>
+            <p class="raw__l r2">The second describes a feeling that awoke in everyone…</p>
+            <p class="raw__l r3"><b>FINAL:</b></p>
+            <p class="raw__l r4">Occurrence 1: <b>Name</b></p>
+            <p class="raw__l r5">Occurrence 2: <b>Emotion</b></p>
+          </div>
+          <div class="arrow">→</div>
+          <div class="out">
+            <p class="raw__h">parsed</p>
+            <p class="slot s1"><span>label_1</span><b class="tag tag--name">Name</b></p>
+            <p class="slot s2"><span>label_2</span><b class="tag tag--sense">Emotion</b></p>
+            <p class="slot s3"><span>explanation</span><i>“The first মায়া follows…”</i></p>
+            <p class="slot s4 slot--bad"><span>if label ∉ 6 classes</span><b class="tag">Unknown → hallucination</b></p>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ===== 5. DISTILLATION ===== -->
+    <article class="ch" id="ch5">
+      <div class="ch__text">
+        <p class="ch__n">Stage 5</p>
+        <h3>Teaching the reason: QLoRA-KD</h3>
+        <p><b>Knowledge distillation.</b> The verified explanations from large LLMs become the teacher's lesson. The small student model is trained to <b>write the explanation first and then the labels</b>, not just to output the labels.</p>
+        <p><b>Masked loss.</b> Prompt tokens get the label <code>-100</code> and are ignored. The loss is computed only on the explanation and the final labels.</p>
+        <p><b>QLoRA.</b> The base model is frozen in 4-bit (NF4). Only small LoRA adapters are trained, so W<sub>adapted</sub> = W<sub>base</sub> + B·A. It fits on a single 16 GB T4.</p>
+        <ul class="ch__facts ch__facts--mono">
+          <li>r = 16 · α = 32 · dropout 0.1</li>
+          <li>q k v o + gate up down</li>
+          <li>lr 1e-4 · cosine · warmup 10%</li>
+          <li>effective batch 16</li>
+          <li>paged AdamW 8-bit</li>
+          <li>early stop on val loss</li>
+        </ul>
+      </div>
+      <div class="ch__scene scene-kd" data-scene="kd">
+        <button type="button" class="replay">↻ replay</button>
+        <div class="kd__teach">
+          <div class="who who--t"><b>Teacher</b><small>large LLMs + human check</small></div>
+          <div class="kd__beam"><span>explanation + labels</span></div>
+          <div class="who who--s"><b>Student</b><small>1–3B model</small></div>
+        </div>
+        <div class="tokens" data-tokens aria-label="Token strip: prompt tokens ignored, explanation and label tokens supervised"></div>
+        <div class="tokens__key"><span><i class="tk tk--p"></i>prompt · −100 · ignored</span><span><i class="tk tk--r"></i>explanation · trained</span><span><i class="tk tk--l"></i>labels · trained</span></div>
+        <div class="lora">
+          <div class="mat mat--w"><b>W<sub>base</sub></b><small>frozen · 4-bit ❄</small></div>
+          <span class="op">+</span>
+          <div class="mat mat--b"><b>B</b><small>d × 16</small></div>
+          <span class="op">·</span>
+          <div class="mat mat--a"><b>A</b><small>16 × d</small></div>
+          <span class="op">=</span>
+          <div class="mat mat--out"><b>W<sub>adapted</sub></b><small>learns culture</small></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ===== 6. EVALUATION ===== -->
+    <article class="ch" id="ch6">
+      <div class="ch__text">
+        <p class="ch__n">Stage 6</p>
+        <h3>Scoring on unseen sentences</h3>
+        <p>On the held-out test set, each prediction is scored on two tracks.</p>
+        <p><b>Labels.</b> <i>Exact Match</i> means both labels are right. There's also average score, macro and micro F1, and the <i>hallucination</i> rate. The key one is <i>Dominant-Bias</i>: of the sentences whose gold answer contains a Name, the share where the model missed that Name.</p>
+        <p><b>Reasoning.</b> The generated explanation is compared with the gold one using chrF and BERTScore, and is also rated by human judges and by an LLM judge.</p>
+      </div>
+      <div class="ch__scene scene-eval" data-scene="eval">
+        <button type="button" class="replay">↻ replay</button>
+        <table class="evt">
+          <thead><tr><th>#</th><th>gold</th><th>predicted</th><th>result</th></tr></thead>
+          <tbody data-evrows></tbody>
+        </table>
+        <div class="tally">
+          <div><b data-t="em">0/6</b><span>Exact Match</span></div>
+          <div><b data-t="bias">0/4</b><span>Dominant-Bias</span></div>
+          <div><b data-t="hall">0/6</b><span>Hallucination</span></div>
+        </div>
+        <p class="scene__note">A toy example of six test sentences. Bias counts only the four sentences whose gold answer contains a Name.</p>
+      </div>
+    </article>
   </section>
 
   <div class="stitch" aria-hidden="true"></div>
@@ -172,7 +357,7 @@
   <!-- ================= RESULTS ================= -->
   <section class="results" id="results">
     <div class="sec-head">
-      <span class="sec-num">৩</span>
+      <span class="sec-num">৪</span>
       <div>
         <p class="eyebrow">Results · exact match on the test set</p>
         <h2>Prompting barely helps. <em>Teaching the reason</em> does.</h2>
@@ -237,7 +422,7 @@
   <!-- ================= PLAY ================= -->
   <section class="play" id="play">
     <div class="sec-head">
-      <span class="sec-num">৪</span>
+      <span class="sec-num">৫</span>
       <div>
         <p class="eyebrow">Try it yourself</p>
         <h2>Person, or meaning?</h2>
@@ -277,7 +462,7 @@
   <!-- ================= FIGURES ================= -->
   <section class="figs" id="figs">
     <div class="sec-head sec-head--row">
-      <span class="sec-num">৫</span>
+      <span class="sec-num">৬</span>
       <div>
         <p class="eyebrow">Figures from the paper</p>
         <h2>Under the hood</h2>
@@ -300,7 +485,7 @@
   <!-- ================= CITE ================= -->
   <section class="cite" id="cite">
     <div class="sec-head">
-      <span class="sec-num">৬</span>
+      <span class="sec-num">৭</span>
       <div>
         <p class="eyebrow">Cite this work</p>
         <h2>BibTeX</h2>

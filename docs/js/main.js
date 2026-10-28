@@ -281,3 +281,240 @@
       .forEach((el, i) => { el.classList.add("rv"); el.style.transitionDelay = `${(i % 4) * 80}ms`; io.observe(el); });
   }
 })();
+
+/* ================= method: animated walkthrough ================= */
+(function () {
+  "use strict";
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!$("#method")) return;
+
+  const seg = "Segmenter" in Intl ? new Intl.Segmenter("bn", { granularity: "grapheme" }) : null;
+  const graphemes = (t) => (seg ? Array.from(seg.segment(t), (x) => x.segment) : Array.from(t));
+  const esc = (t) => t.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+  // each scene runs an async timeline; a new run cancels the previous one
+  function timeline(scene, fn) {
+    const id = (scene._run = (scene._run || 0) + 1);
+    const alive = () => scene._run === id;
+    const wait = (ms) => new Promise((r) => setTimeout(r, reduced ? 0 : ms));
+    fn(alive, wait);
+  }
+
+  // types [[text, cls], ...] into el, keeping Bangla letters whole
+  async function type(el, parts, alive, wait, speed = 14) {
+    const units = [];
+    parts.forEach(([t, c]) => graphemes(t).forEach((g) => units.push([g, c])));
+    let html = "", cur = null;
+    const flush = () => { el.innerHTML = html + (cur !== null ? "</span>" : ""); };
+    for (let i = 0; i < units.length; i++) {
+      if (!alive()) return false;
+      const [g, c] = units[i];
+      if (c !== cur) { if (cur !== null) html += "</span>"; html += `<span class="${c || ""}">`; cur = c; }
+      html += esc(g);
+      if (reduced) continue;
+      if (i % 2 === 0) { flush(); await wait(speed); }
+    }
+    flush();
+    return true;
+  }
+
+  /* ---- 1. dataset ---- */
+  const JSON_PARTS = [
+    ["{\n  ", ""], ['"id"', "k"], [": 1,\n  ", ""],
+    ['"word_bangla"', "k"], [": ", ""], ['"মায়া"', "s"], [",\n  ", ""],
+    ['"category"', "k"], [": ", ""], ['"Name↔Emotion"', "s"], [",\n  ", ""],
+    ['"narrative_bangla"', "k"], [": ", ""], ['"মায়া নামের মেয়েটিকে … গভীর মায়া জেগে উঠল।"', "s"], [",\n  ", ""],
+    ['"token_labels"', "k"], [': { "token_1": ', ""], ['"Name"', "s"], [', "token_2": ', ""], ['"Emotion"', "s"], [" },\n  ", ""],
+    ['"why_first"', "k"], [": ", ""], ['"নামের (named) marks a person…"', "s"], [",\n  ", ""],
+    ['"cultural_note"', "k"], [": ", ""], ['"parents name daughters after aspirational emotions"', "s"], ["\n}", ""],
+  ];
+  function playData(scene) {
+    $$(".flow > *", scene).forEach((el, i) => { el.dataset.step = ""; el.style.setProperty("--d", i * 260); });
+    const json = $("[data-json]", scene), count = $("[data-countup]", scene);
+    json.innerHTML = ""; count.textContent = "0";
+    timeline(scene, async (alive, wait) => {
+      await wait(1500);
+      if (!(await type(json, JSON_PARTS, alive, wait, 10))) return;
+      const target = +count.dataset.countup, t0 = performance.now();
+      (function step(t) {
+        if (!alive()) return;
+        const p = Math.min(1, (t - t0) / 1200);
+        count.textContent = Math.round(target * (1 - Math.pow(1 - p, 3))).toLocaleString("en-US");
+        if (p < 1) requestAnimationFrame(step);
+      })(t0);
+    });
+  }
+
+  /* ---- 2. split ---- */
+  function playSplit(scene) {
+    const box = $("[data-dots]", scene);
+    if (!box.children.length) box.innerHTML = "<i></i>".repeat(100);
+    const cells = Array.from(box.children);
+    cells.forEach((c) => { c.className = ""; });
+    const order = cells.map((_, i) => i).sort(() => Math.random() - 0.5);
+    timeline(scene, async (alive, wait) => {
+      await wait(400);
+      for (const i of order) {
+        if (!alive()) return;
+        const cls = i < 78 ? "d-train" : i < 88 ? "d-val" : "d-test";
+        cells[i].className = cls + " pop";
+        setTimeout(() => cells[i].classList.remove("pop"), 250);
+        await wait(22);
+      }
+    });
+  }
+
+  /* ---- 3. prompting ---- */
+  const REPLIES = {
+    zero: [
+      ["FINAL:\nOccurrence 1: Emotion   ", ""], ["✗ gold is Name", "bad"],
+      ["\nOccurrence 2: Emotion   ", ""], ["✓", "ok"],
+      ["\n\n→ the girl is missed: dominant-meaning bias", "bad"],
+    ],
+    few: [
+      ["The word মায়া expresses deep compassion in both places…\n", ""],
+      ["FINAL:\nOccurrence 1: Emotion   ", ""], ["✗", "bad"],
+      ["\nOccurrence 2: Emotion   ", ""], ["✓", "ok"],
+      ["\n\n→ the format is learned, the culture is not", "bad"],
+    ],
+    ccot: [
+      ["Occurrence 1\n", ""], ["  A · Name: ", "arg"], ["followed by নামের “named” → a girl\n", ""],
+      ["  B · Emotion: ", "arg"], ["no feeling is described here\n", ""], ["  Decision: Name\n", "ok"],
+      ["Occurrence 2\n", ""], ["  A · Name: ", "arg"], ["no person is meant\n", ""],
+      ["  B · Emotion: ", "arg"], ["“গভীর মায়া জেগে উঠল” → a feeling awoke\n", ""], ["  Decision: Emotion\n", "ok"],
+      ["FINAL:\nOccurrence 1: Name      ", ""], ["✓", "ok"], ["\nOccurrence 2: Emotion   ", ""], ["✓", "ok"],
+    ],
+  };
+  function showPrompt(scene, mode, alive, wait) {
+    $$(".ptabs button", scene).forEach((b) => b.classList.toggle("is-on", b.dataset.p === mode));
+    $("[data-shots]", scene).classList.toggle("is-on", mode === "few");
+    return type($("[data-typed]", scene), REPLIES[mode], alive, wait, mode === "ccot" ? 12 : 18);
+  }
+  function playPrompt(scene, only) {
+    timeline(scene, async (alive, wait) => {
+      for (const mode of only ? [only] : ["zero", "few", "ccot"]) {
+        if (!alive()) return;
+        if (!(await showPrompt(scene, mode, alive, wait))) return;
+        if (!only && mode !== "ccot") await wait(1600);
+      }
+    });
+  }
+
+  /* ---- 4. parse ---- */
+  function playParse(scene) {
+    $$(".raw__l", scene).forEach((l) => l.classList.remove("hl"));
+    $$(".slot", scene).forEach((l) => l.classList.remove("in"));
+    timeline(scene, async (alive, wait) => {
+      const hl = (sel) => $$(sel, scene).forEach((l) => l.classList.add("hl"));
+      const un = () => $$(".raw__l", scene).forEach((l) => l.classList.remove("hl"));
+      const steps = [
+        () => hl(".r3"), () => { hl(".r4"); }, () => $(".s1", scene).classList.add("in"),
+        () => { un(); hl(".r5"); }, () => $(".s2", scene).classList.add("in"),
+        () => { un(); hl(".r1, .r2"); }, () => $(".s3", scene).classList.add("in"),
+        () => un(), () => $(".s4", scene).classList.add("in"),
+      ];
+      await wait(500);
+      for (const s of steps) { if (!alive()) return; s(); await wait(650); }
+    });
+  }
+
+  /* ---- 5. distillation ---- */
+  function playKD(scene) {
+    const box = $("[data-tokens]", scene);
+    if (!box.children.length) {
+      box.innerHTML = Array.from({ length: 44 }, (_, i) =>
+        `<i class="${i < 16 ? "tk--p" : i < 39 ? "tk--r" : "tk--l"}"></i>`).join("");
+    }
+    const toks = Array.from(box.children);
+    toks.forEach((t) => t.classList.remove("on"));
+    timeline(scene, async (alive, wait) => {
+      await wait(600);
+      for (const t of toks) { if (!alive()) return; t.classList.add("on"); await wait(45); }
+    });
+  }
+
+  /* ---- 6. evaluation ---- */
+  const ROWS = [
+    ["Name · Emotion", "Name · Emotion", "ok", "✓ exact"],
+    ["Name · Concept", "Concept · Concept", "bias", "✗ missed Name"],
+    ["Concept · Emotional State", "Concept · Emotional State", "ok", "✓ exact"],
+    ["Name · Spiritual", "Name · Spiritual", "ok", "✓ exact"],
+    ["Emotional State · Collective State", "Emotional State · Unknown", "hall", "? hallucination"],
+    ["Name · Concept", "Name · Emotion", "part", "½ partial"],
+  ];
+  function playEval(scene) {
+    const body = $("[data-evrows]", scene);
+    body.innerHTML = ROWS.map((r, i) => `<tr><td>${i + 1}</td><td>${r[0]}</td><td>${r[1]}</td><td class="res res--${r[2]}">${r[3]}</td></tr>`).join("");
+    const t = { em: 0, bias: 0, hall: 0 };
+    const draw = () => {
+      $('[data-t="em"]', scene).textContent = `${t.em}/6`;
+      $('[data-t="bias"]', scene).textContent = `${t.bias}/4`;
+      $('[data-t="hall"]', scene).textContent = `${t.hall}/6`;
+    };
+    draw();
+    timeline(scene, async (alive, wait) => {
+      await wait(400);
+      const rows = Array.from(body.children);
+      for (let i = 0; i < rows.length; i++) {
+        if (!alive()) return;
+        rows[i].classList.add("in");
+        const k = ROWS[i][2];
+        if (k === "ok") t.em += 1; else if (k === "bias") t.bias += 1; else if (k === "hall") t.hall += 1;
+        draw();
+        await wait(700);
+      }
+    });
+  }
+
+  const PLAY = { data: playData, split: playSplit, prompt: playPrompt, parse: playParse, kd: playKD, eval: playEval };
+
+  function play(scene) {
+    scene.classList.remove("is-play");
+    void scene.offsetWidth; // restart CSS transitions
+    scene.classList.add("is-play");
+    PLAY[scene.dataset.scene](scene);
+  }
+
+  const scenes = $$(".ch__scene");
+  // draw the static parts up front so nothing looks empty before a scene plays
+  const dotsBox = $(".scene-split [data-dots]");
+  if (dotsBox && !dotsBox.children.length) dotsBox.innerHTML = "<i></i>".repeat(100);
+  const tokBox = $(".scene-kd [data-tokens]");
+  if (tokBox && !tokBox.children.length) {
+    tokBox.innerHTML = Array.from({ length: 44 }, (_, i) => `<i class="${i < 16 ? "tk--p" : i < 39 ? "tk--r" : "tk--l"}"></i>`).join("");
+  }
+  scenes.forEach((sc) => {
+    $(".replay", sc).addEventListener("click", () => play(sc));
+  });
+  $$(".scene-prompt .ptabs button").forEach((b) => b.addEventListener("click", () => {
+    const sc = b.closest(".ch__scene");
+    sc.classList.add("is-play");
+    playPrompt(sc, b.dataset.p);
+  }));
+
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver((es) => es.forEach((e) => {
+      if (e.isIntersecting && !e.target._played) { e.target._played = true; play(e.target); }
+    }), { threshold: 0.2 });
+    scenes.forEach((s) => io.observe(s));
+  } else scenes.forEach(play);
+
+  // stage map follows the scroll
+  const mapLinks = $$("#methodMap a");
+  const chs = mapLinks.map((a) => $(a.getAttribute("href")));
+  function drawMap() {
+    let active = -1;
+    chs.forEach((c, i) => { if (c.getBoundingClientRect().top < innerHeight * 0.5) active = i; });
+    mapLinks.forEach((a, i) => a.classList.toggle("is-active", i === active));
+    const a = mapLinks[active];
+    if (a && a !== drawMap.last) {
+      drawMap.last = a;
+      const map = $("#methodMap");
+      map.scrollTo({ left: a.offsetLeft - 8, behavior: reduced ? "auto" : "smooth" });
+    }
+  }
+  addEventListener("scroll", drawMap, { passive: true });
+  drawMap();
+})();

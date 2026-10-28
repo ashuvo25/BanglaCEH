@@ -5,8 +5,6 @@
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-  const lerp = (a, b, t) => a + (b - a) * t;
 
   function whenVisible(el, fn, threshold = 0.3) {
     if (!el) return;
@@ -17,215 +15,123 @@
     io.observe(el);
   }
 
-  /* ---------------- cursor ---------------- */
-  const cursor = $(".cursor");
-  if (matchMedia("(pointer: fine)").matches && !reduced) {
-    let cx = 0, cy = 0, tx = 0, ty = 0;
-    addEventListener("mousemove", (e) => { tx = e.clientX; ty = e.clientY; cursor.classList.add("is-on"); });
-    document.addEventListener("mouseleave", () => cursor.classList.remove("is-on"));
-    (function loop() {
-      cx = lerp(cx, tx, 0.22); cy = lerp(cy, ty, 0.22);
-      cursor.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%)`;
-      requestAnimationFrame(loop);
-    })();
-    document.addEventListener("mouseover", (e) => {
-      cursor.classList.toggle("is-big", !!e.target.closest("a, button, select, .tile, .find, img"));
-      cursor.classList.toggle("is-hide", !!e.target.closest("#splitStage"));
-    });
-  }
-
-  /* ---------------- hero: one word, two readings ---------------- */
+  /* ---------------- hero: one spelling, two lives ---------------- */
   const WORDS = [
-    { w: "মায়া", r: "Maya", name: "Maya, a girl", sense: "affectionate compassion" },
-    { w: "আশা", r: "Asha", name: "Asha, a girl", sense: "hope" },
-    { w: "গগন", r: "Gagan", name: "Gagan, a boy", sense: "the sky, the firmament" },
-    { w: "আরিফ", r: "Arif", name: "Arif, a boy", sense: "one who knows the divine" },
-    { w: "ঈমান", r: "Iman", name: "Iman, a man", sense: "faith, moral integrity" },
+    { w: "মায়া", ipa: "/māyā/", kind: "emotion", def: "deep, affectionate compassion; a tender attachment to someone." },
+    { w: "আশা", ipa: "/āśā/", kind: "concept", def: "hope; the expectation that something good will come." },
+    { w: "গগন", ipa: "/gɔgon/", kind: "concept", def: "the sky; the vast celestial firmament." },
+    { w: "আরিফ", ipa: "/ārif/", kind: "spiritual", def: "one who knows the divine through inner, intuitive insight (Sufi)." },
+    { w: "ঈমান", ipa: "/īmān/", kind: "spiritual", def: "faith; unwavering moral and religious integrity." },
   ];
-  const split = $("#split");
-  const stage = $("#splitStage");
-  const tagName = $(".tagline--name"), tagSense = $(".tagline--sense");
-  let wi = 0, touched = 0, dragging = false;
-
-  function setWord(i) {
+  const art = $("#twoLives");
+  let wi = 0, lastClick = 0;
+  function showWord(i) {
     const d = WORDS[i];
-    split.classList.add("is-swapping");
+    art.classList.add("is-flip");
     setTimeout(() => {
-      $$("[data-word]", split).forEach((l) => { l.textContent = d.w; });
-      $("#tagName").textContent = d.name;
-      $("#tagSense").textContent = d.sense;
-      $("#splitSr").textContent = `${d.w}, ${d.r}: ${d.name}, and ${d.sense}`;
-      split.classList.remove("is-swapping");
-    }, reduced ? 0 : 420);
+      $$("[data-w]", art).forEach((el) => { el.textContent = d.w; });
+      $("#dIpa").textContent = d.ipa;
+      $("#dKind").textContent = d.kind;
+      $("#dDef").textContent = d.def;
+      art.classList.remove("is-flip");
+    }, reduced ? 0 : 300);
   }
-  setInterval(() => {
-    if (document.hidden || reduced || performance.now() - touched < 5000) return;
-    wi = (wi + 1) % WORDS.length; setWord(wi);
-  }, 4200);
+  $("#nextWord").addEventListener("click", () => { wi = (wi + 1) % WORDS.length; showWord(wi); lastClick = performance.now(); });
+  if (!reduced) setInterval(() => {
+    if (document.hidden || performance.now() - lastClick < 8000) return;
+    wi = (wi + 1) % WORDS.length; showWord(wi);
+  }, 5000);
 
-  // the divider: left of it reads as a name (blue), right of it as a meaning (orange)
-  function setSplit(pct) {
-    pct = clamp(pct, 0, 100);
-    stage.style.setProperty("--s", pct.toFixed(1) + "%");
-    tagName.classList.toggle("is-lead", pct >= 50);
-    tagSense.classList.toggle("is-lead", pct < 50);
-  }
-  function fromPointer(e) {
-    const r = stage.getBoundingClientRect();
-    setSplit(((e.clientX - r.left) / r.width) * 100);
-    touched = performance.now();
-  }
-  $("#hero").addEventListener("pointermove", (e) => { if (e.pointerType === "mouse" || dragging) fromPointer(e); });
-  stage.addEventListener("pointerdown", (e) => { dragging = true; stage.setPointerCapture(e.pointerId); fromPointer(e); });
-  stage.addEventListener("pointerup", () => { dragging = false; });
-  stage.addEventListener("pointercancel", () => { dragging = false; });
-  setSplit(50);
-  if (!reduced) {
-    (function sweep(t) {
-      if (performance.now() - touched > 2500) setSplit(50 + Math.sin(t / 1400) * 30);
-      requestAnimationFrame(sweep);
-    })(0);
-  }
-
-  /* ---------------- marquee ---------------- */
-  const MQ = [["মায়া", "Maya"], ["আশা", "Asha"], ["গগন", "Gagan"], ["আরিফ", "Arif"], ["ঈমান", "Iman"],
-    ["দীপ্তি", "Dipti"], ["সুনীল", "Sunil"], ["ভ্রমর", "Bhromor"], ["হৃদয়", "Hridoy"], ["সোহাগী", "Sohagi"]];
-  const row = MQ.map(([b, r]) => `<span class="marquee__item"><span class="bn">${b}</span><span class="mono">${r}</span><i>✦</i></span>`).join("");
-  $("#marquee").innerHTML = row + row;
-
-  /* ---------------- manifesto: words light up on scroll ---------------- */
-  const man = $("#manifesto");
-  const KEYS = ["hope.", "Hope.", "Sky.", "Compassion.", "Faith.", "person,", "girl."];
-  man.innerHTML = man.textContent.trim().split(/\s+/)
-    .map((w) => `<span class="w${KEYS.includes(w) ? " is-key" : ""}">${w}</span>`).join(" ");
-  const manWords = $$(".w", man);
-  function litManifesto() {
-    const r = man.getBoundingClientRect();
-    const p = clamp((innerHeight * 0.85 - r.top) / (r.height + innerHeight * 0.35), 0, 1);
-    const n = Math.round(p * manWords.length);
-    manWords.forEach((w, i) => w.classList.toggle("is-lit", i < n));
-  }
-
-  /* ---------------- lens: human vs LLM reading ---------------- */
-  const lens = $("#lensCard");
+  /* ---------------- who is reading ---------------- */
+  const read = $("#read");
   const VERDICT = {
-    human: "✓ Name + Emotion. The marker নামের (“named”) points to a person.",
-    llm: "✗ Emotion + Emotion. The model sees মায়া and forgets the girl. This is dominant-meaning bias.",
+    human: "✓ Name, then Emotion. The word নামের (“named”) tells a Bangla reader the first মায়া is a girl.",
+    llm: "✗ Emotion, then Emotion. The model knows মায়া as a feeling and forgets the girl. This is dominant-meaning bias.",
   };
-  function setLens(mode) {
-    lens.dataset.mode = mode;
-    $$(".switch__btn", lens).forEach((b) => b.classList.toggle("is-on", b.dataset.mode === mode));
-    $(".tk--1 .tk__l", lens).textContent = mode === "human" ? "Name" : "Emotion";
-    $(".tk--2 .tk__l", lens).textContent = "Emotion";
-    $("#lensVerdict").textContent = VERDICT[mode];
+  function setRead(mode) {
+    read.dataset.mode = mode;
+    $$(".read__tabs button", read).forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === mode)));
+    $(".w1 small", read).textContent = mode === "human" ? "Name" : "Emotion";
+    $(".w2 small", read).textContent = "Emotion";
+    $("#readVerdict").textContent = VERDICT[mode];
   }
-  $$(".switch__btn", lens).forEach((b) => b.addEventListener("click", () => setLens(b.dataset.mode)));
-  setLens("human");
-  lens.addEventListener("pointermove", (e) => {
-    const r = lens.getBoundingClientRect();
-    lens.style.setProperty("--mx", `${e.clientX - r.left}px`);
-    lens.style.setProperty("--my", `${e.clientY - r.top}px`);
-  });
+  $$(".read__tabs button", read).forEach((b) => b.addEventListener("click", () => setRead(b.dataset.mode)));
+  setRead("human");
 
   /* ---------------- counters ---------------- */
   $$("[data-count]").forEach((el) => {
     const target = parseFloat(el.dataset.count);
     const dec = parseInt(el.dataset.decimals || "0", 10);
     const show = (v) => { el.textContent = dec ? v.toFixed(dec) : Math.round(v).toLocaleString("en-US"); };
-    if (reduced) { show(target); return; }
+    if (reduced) return;
+    show(0);
     whenVisible(el, () => {
-      const t0 = performance.now(), dur = 1600;
+      const t0 = performance.now(), dur = 1300;
       (function step(t) {
         const p = Math.min(1, (t - t0) / dur);
-        show(target * (1 - Math.pow(1 - p, 4)));
+        show(target * (1 - Math.pow(1 - p, 3)));
         if (p < 1) requestAnimationFrame(step);
       })(t0);
     });
   });
 
-  /* ---------------- donut ---------------- */
-  const CATS = [
-    ["Name ↔ Concept", 795, "#6d8dff"],
-    ["Concept ↔ Emotion", 193, "#c27cff"],
-    ["Name ↔ Spiritual", 179, "#ff6b3d"],
-    ["Name ↔ Emotion", 178, "#ffb347"],
-    ["Emotion ↔ State", 171, "#7be0a4"],
+  /* ---------------- results chart ---------------- */
+  const REGIMES = ["Zero-shot", "Few-shot", "Cultural CoT", "QLoRA-KD"];
+  const MODELS = [
+    { name: "Qwen2.5-1.5B", em: [0.65, 8.39, 30.97, 85.16], note: "From almost zero to 85.16%. Bias falls from 63.46% to 0.00%." },
+    { name: "Llama-3.2-3B", em: [10.97, 22.58, 15.16, 82.42], note: "Cultural CoT doesn't help Llama, but distillation lifts it to 82.42% with 2.80% bias." },
+    { name: "TituLLM-1B", em: [0.11, 0.31, 1.14, 87.91], note: "The Bangla-specific model fails every prompt, then becomes the strongest system of all." },
+    { name: "GPT-4o-mini", em: [43.87, 49.68, null, null], note: "Closed model, prompting only. Its best (49.68%) is the red line every distilled small model clears." },
   ];
-  const total = CATS.reduce((s, c) => s + c[1], 0);
-  $("#legend").innerHTML = CATS.map(([l, n, c]) => `<li><i style="background:${c}"></i>${l}<b>${n}</b></li>`).join("");
-  $("#donut").setAttribute("aria-label", "Entanglement types: " + CATS.map(([l, n]) => `${l} ${n}`).join(", "));
-  whenVisible($("#donut"), () => {
-    let acc = 0;
-    const stops = CATS.map(([, n, c]) => { const a = acc; acc += (n / total) * 100; return `${c} ${a.toFixed(2)}% ${(acc - 0.4).toFixed(2)}%, transparent ${(acc - 0.4).toFixed(2)}% ${acc.toFixed(2)}%`; });
-    $("#donut").style.background = `conic-gradient(${stops.join(", ")})`;
-  });
+  const tabs = $("#modelTabs"), sewn = $("#sewn");
+  tabs.innerHTML = MODELS.map((m, i) => `<button type="button" role="tab" aria-selected="${i === 0}" data-i="${i}">${m.name}</button>`).join("");
+  sewn.innerHTML = `<div class="sewn__ceiling" aria-hidden="true"><span>GPT-4o-mini best · 49.68</span></div>` +
+    REGIMES.map((r, j) => `
+      <div class="row${j === 3 ? " row--kd" : ""}">
+        <span class="row__label">${r}</span>
+        <span class="row__track"><span class="row__fill"><span class="row__val"></span></span></span>
+      </div>`).join("");
 
-  /* ---------------- meltdown (sticky scroll) ---------------- */
-  const STAGES = [
-    { name: "Zero-shot", em: 0.65, color: "#ff6b3d", note: "Out of the box, it almost never gets both readings right. 63.46% of the time it simply misses the name." },
-    { name: "Few-shot", em: 8.39, color: "#ff8f4d", note: "Worked examples help the format, but not the culture." },
-    { name: "Cultural CoT", em: 30.97, color: "#c27cff", note: "Make it argue for both readings first. Bias falls to 2.88%, with no training at all." },
-    { name: "QLoRA-KD", em: 85.16, color: "#6d8dff", note: "Distil cultural explanations into the model. 85.16% exact match. Bias: 0.00%." },
-  ];
-  const melt = $("#results");
-  const meltNum = $("#meltNum");
-  const meltDots = $$("#meltDots li");
-  let meltStage = -1;
-  function drawMelt() {
-    const r = melt.getBoundingClientRect();
-    const p = clamp(-r.top / (r.height - innerHeight), 0, 1);
-    const f = p * (STAGES.length - 1);
-    const i = Math.min(STAGES.length - 2, Math.floor(f));
-    const t = clamp((f - i - 0.35) / 0.3, 0, 1); // hold, then move
-    meltNum.textContent = lerp(STAGES[i].em, STAGES[i + 1].em, t).toFixed(2);
-    const s = Math.round(f);
-    if (s !== meltStage) {
-      meltStage = s;
-      $("#meltStage").textContent = STAGES[s].name;
-      $("#meltNote").textContent = STAGES[s].note;
-      $("#meltGlow").style.background = STAGES[s].color;
-      meltDots.forEach((d, j) => d.classList.toggle("is-on", j === s));
-    }
+  function placeCeiling() {
+    const track = $(".row__track", sewn);
+    $(".sewn__ceiling", sewn).style.left = (track.offsetLeft + track.offsetWidth * 0.4968) + "px";
   }
-  meltDots.forEach((d, j) => {
-    d.style.cursor = "pointer";
-    d.addEventListener("click", () => {
-      const top = melt.offsetTop + (melt.offsetHeight - innerHeight) * (j / (STAGES.length - 1));
-      scrollTo({ top, behavior: reduced ? "auto" : "smooth" });
+  function drawModel(i) {
+    const m = MODELS[i];
+    $$("button", tabs).forEach((b, j) => b.setAttribute("aria-selected", String(j === i)));
+    $$(".row", sewn).forEach((row, j) => {
+      const v = m.em[j];
+      const fill = $(".row__fill", row), val = $(".row__val", row);
+      row.classList.toggle("row--na", v === null);
+      fill.style.width = v === null ? "0%" : Math.max(v, 1.5) + "%";
+      val.textContent = v === null ? "not tested" : v.toFixed(2) + "%";
+      // keep long bars' labels inside the bar so they never overflow on phones
+      const inside = v !== null && v > 70;
+      val.style.left = inside ? "auto" : "";
+      val.style.right = inside ? "10px" : "";
+      val.style.color = inside ? "#fff" : "";
     });
-  });
-
-  /* ---------------- race ---------------- */
-  const LANES = [
-    { name: "Qwen2.5-1.5B", tag: "open", prompt: 30.97, kd: 85.16 },
-    { name: "Llama-3.2-3B", tag: "open", prompt: 22.58, kd: 82.42 },
-    { name: "TituLLM-1B", tag: "Bangla", prompt: 1.14, kd: 87.91, crown: true },
-    { name: "GPT-4o-mini", tag: "closed", prompt: 49.68, kd: null },
-  ];
-  const board = $("#raceBoard");
-  board.insertAdjacentHTML("beforeend", LANES.map((l) => `
-    <div class="lane${l.crown ? " lane--crown" : ""}">
-      <div class="lane__name">${l.name}<em>${l.tag}</em></div>
-      <div class="lane__track" role="img" aria-label="${l.name}: best prompting ${l.prompt}%${l.kd ? `, after QLoRA-KD ${l.kd}%` : ""}">
-        ${l.kd ? `<div class="lane__bar lane__bar--kd" data-w="${l.kd}">${l.kd.toFixed(2)}</div>` : ""}
-        <div class="lane__bar lane__bar--prompt" data-w="${l.prompt}">${l.prompt.toFixed(2)}</div>
-      </div>
-    </div>`).join(""));
-  whenVisible(board, () => $$(".lane__bar", board).forEach((b) => { b.style.width = `max(${b.dataset.w}%, 64px)`; }), 0.2);
+    sewn.setAttribute("aria-label", `${m.name} exact match: ` + REGIMES.map((r, j) => `${r} ${m.em[j] === null ? "not tested" : m.em[j] + "%"}`).join(", "));
+    $("#chartNote").textContent = m.note;
+  }
+  tabs.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) drawModel(+b.dataset.i); });
+  placeCeiling();
+  addEventListener("resize", placeCeiling);
+  whenVisible(sewn, () => drawModel(0), 0.2);
 
   /* ---------------- figures ---------------- */
-  $$(".seg__b").forEach((b) => b.addEventListener("click", () => {
-    $$(".seg__b").forEach((x) => x.classList.toggle("is-on", x === b));
-    $$("#figRail img").forEach((img) => { img.src = `assets/figures/${img.dataset.base}${b.dataset.fig}.png`; });
+  $$(".seg button").forEach((b) => b.addEventListener("click", () => {
+    $$(".seg button").forEach((x) => x.classList.toggle("is-on", x === b));
+    $$("#figgrid img").forEach((img) => { img.src = `assets/figures/${img.dataset.base}${b.dataset.fig}.png`; });
   }));
-  $$("#figRail img").forEach((img) => img.addEventListener("click", () => {
+  $$("#figgrid img").forEach((img) => img.addEventListener("click", () => {
     const lb = document.createElement("div");
     lb.className = "lightbox";
     lb.innerHTML = `<img src="${img.src}" alt="${img.alt}">`;
-    const close = () => { lb.remove(); removeEventListener("keydown", esc); };
-    const esc = (e) => { if (e.key === "Escape") close(); };
+    const close = () => { lb.remove(); removeEventListener("keydown", onKey); };
+    const onKey = (e) => { if (e.key === "Escape") close(); };
     lb.addEventListener("click", close);
-    addEventListener("keydown", esc);
+    addEventListener("keydown", onKey);
     document.body.appendChild(lb);
   }));
 
@@ -234,13 +140,23 @@
   const g = { data: [], pool: [], cur: null, picks: {}, done: false, right: 0, total: 0, streak: 0, bn: false };
   const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+  // Bangla vowel signs, hasanta, nukta, chandrabindu etc. must stay with the letter before them
+  const MARK = /[ঁ-ঃ়া-ৌ্ৗ‌‍]/;
+  function clusterEnd(text, end) {
+    while (end < text.length && MARK.test(text[end])) {
+      end += text[end] === "্" && end + 1 < text.length ? 2 : 1; // hasanta joins the next consonant
+    }
+    return end;
+  }
+
   function markSentence(text, w) {
     const out = []; let from = 0, n = 0, i;
     while (n < 2 && (i = text.indexOf(w, from)) !== -1) {
       out.push(esc(text.slice(from, i)));
       n += 1;
-      out.push(`<span class="gt" data-slot="${n}">${esc(w)}<sup>${n}</sup></span>`);
-      from = i + w.length;
+      const end = clusterEnd(text, i + w.length);
+      out.push(`<span class="gt" data-slot="${n}">${esc(text.slice(i, end))}<sup>${n}</sup></span>`);
+      from = end;
     }
     out.push(esc(text.slice(from)));
     return out.join("");
@@ -258,12 +174,12 @@
     });
   });
 
+  function langLabel() { $("#gLang").textContent = g.bn ? "Explain in English" : "বাংলায় ব্যাখ্যা"; }
   function renderWhy() {
     const c = g.cur;
     $("#gWhy1").textContent = g.bn ? c.why1_bn : c.why1_en;
     $("#gWhy2").textContent = g.bn ? c.why2_bn : c.why2_en;
     $$("#gWhy1, #gWhy2").forEach((p) => p.classList.toggle("bn-text", g.bn));
-    $("#gLang").textContent = g.bn ? "English" : "বাংলা";
   }
 
   function nextItem() {
@@ -277,8 +193,7 @@
     $("#gEnglish").textContent = "“" + c.en + "”";
     $$(".chip").forEach((b) => { b.className = "chip"; b.setAttribute("aria-pressed", "false"); });
     $("#gCheck").disabled = true;
-    $("#gNext").textContent = "Skip →";
-    $("#gReveal").hidden = true;
+    $("#gOut").hidden = true;
   }
 
   function check() {
@@ -304,15 +219,14 @@
 
     const missedName = [1, 2].some((s) => gold[s] === "Name" && g.picks[s] !== "Name");
     $("#gVerdict").textContent = ok === 2
-      ? (g.streak > 2 ? `Perfect. ${g.streak} in a row: better than GPT-4o-mini.` : "Perfect. Both readings right.")
-      : missedName ? "You missed the name. That's the same bias the models have."
-        : ok === 1 ? "Half right. Here's the reasoning." : "Not quite. Here's the reasoning.";
+      ? (g.streak >= 3 ? `Both right, ${g.streak} in a row.` : "Both right. You read it like a native speaker.")
+      : missedName ? "You missed the person. That's exactly the mistake the models make."
+        : ok === 1 ? "One out of two. Here's the reasoning." : "Not this time. Here's the reasoning.";
     $("#gL1").textContent = c.l1;
     $("#gL2").textContent = c.l2;
     $("#gNote").textContent = c.note_en;
     renderWhy();
-    $("#gReveal").hidden = false;
-    $("#gNext").textContent = "Next sentence →";
+    $("#gOut").hidden = false;
   }
 
   function filter() {
@@ -323,7 +237,7 @@
 
   $("#gCheck").addEventListener("click", check);
   $("#gNext").addEventListener("click", nextItem);
-  $("#gLang").addEventListener("click", () => { g.bn = !g.bn; if (g.done) renderWhy(); else $("#gLang").textContent = g.bn ? "English" : "বাংলা"; });
+  $("#gLang").addEventListener("click", () => { g.bn = !g.bn; langLabel(); if (g.done) renderWhy(); });
   $("#gCat").addEventListener("change", filter);
 
   fetch("data/samples.json")
@@ -334,45 +248,36 @@
       $("#gCat").insertAdjacentHTML("beforeend", cats.map((c) => `<option value="${c}">${c.replace("↔", " ↔ ")}</option>`).join(""));
       filter();
     })
-    .catch(() => { $("#gSentence").textContent = "Could not load the sample sentences. Open the site through a web server, e.g. GitHub Pages."; });
+    .catch(() => { $("#gSentence").textContent = "Could not load the sentences. Open the site through a web server, e.g. GitHub Pages."; });
 
   /* ---------------- copy bibtex ---------------- */
   $("#copyBib").addEventListener("click", async () => {
     const b = $("#copyBib");
-    try { await navigator.clipboard.writeText($("#bibtex").innerText); b.textContent = "copied ✓"; }
+    try { await navigator.clipboard.writeText($("#bibtex").innerText); b.textContent = "Copied ✓"; }
     catch (e) {
       const r = document.createRange(); r.selectNodeContents($("#bibtex"));
       const s = getSelection(); s.removeAllRanges(); s.addRange(r);
-      b.textContent = "press ctrl+c";
+      b.textContent = "Press Ctrl+C";
     }
-    setTimeout(() => { b.textContent = "copy"; }, 1800);
+    setTimeout(() => { b.textContent = "Copy"; }, 1800);
   });
 
-  /* ---------------- nav active + reveal ---------------- */
-  const navLinks = $$(".nav__links a");
-  const navTargets = navLinks.map((a) => $(a.getAttribute("href")));
+  /* ---------------- nav highlight + reveal ---------------- */
+  const links = $$(".top__nav a");
+  const targets = links.map((a) => $(a.getAttribute("href")));
   function drawNav() {
-    const y = innerHeight * 0.4;
     let active = -1;
-    navTargets.forEach((t, i) => { if (t && t.getBoundingClientRect().top < y) active = i; });
-    navLinks.forEach((a, i) => a.classList.toggle("is-active", i === active));
+    targets.forEach((t, i) => { if (t && t.getBoundingClientRect().top < innerHeight * 0.4) active = i; });
+    links.forEach((a, i) => a.classList.toggle("is-active", i === active));
   }
+  addEventListener("scroll", drawNav, { passive: true });
+  drawNav();
 
   if (!reduced && "IntersectionObserver" in window) {
     const io = new IntersectionObserver((es) => es.forEach((e) => {
       if (e.isIntersecting) { e.target.classList.add("is-in"); io.unobserve(e.target); }
-    }), { threshold: 0.12 });
-    $$(".lens__head, .lens__card, .cats, .data h2, .tile, .race h2, .lane, .vs__side, .vs__cap, .find, .play__head, .game, .figs__rail, .term")
-      .forEach((el, i) => { el.classList.add("rv"); el.style.transitionDelay = `${(i % 4) * 70}ms`; io.observe(el); });
+    }), { threshold: 0.1 });
+    $$(".sec-head, .problem__copy, .read, .patch, .tree, .thread li, .chartcard, .bigstat, .lesson, .game, .figgrid figure, .slip")
+      .forEach((el, i) => { el.classList.add("rv"); el.style.transitionDelay = `${(i % 4) * 80}ms`; io.observe(el); });
   }
-
-  let ticking = false;
-  function onScroll() {
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => { litManifesto(); drawMelt(); drawNav(); ticking = false; });
-  }
-  addEventListener("scroll", onScroll, { passive: true });
-  addEventListener("resize", onScroll);
-  litManifesto(); drawMelt(); drawNav();
 })();
